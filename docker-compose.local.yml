@@ -1,0 +1,6 @@
+# Apenas desenvolvimento local — NÃO usar na VPS
+services:
+  frontend:
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3255}:${FRONTEND_PORT:-3255}"
+      - "0.0.0.0:80:${FRONTEND_PORT:-3255}"

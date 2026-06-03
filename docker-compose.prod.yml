@@ -1,0 +1,15 @@
+# Produção VPS — sem publicar porta 80 no container (use Nginx no host).
+# Remova ou renomeie docker-compose.override.yml antes de subir em produção.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+name: multivus-loja
+
+services:
+  frontend:
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3255}:${FRONTEND_PORT:-3255}"
+
+  backend:
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-3256}:${BACKEND_PORT:-3256}"

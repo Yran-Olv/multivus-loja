@@ -1,0 +1,14 @@
+<svg width="180" height="180" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+  <rect width="180" height="180" rx="40" fill="#000000"/>
+  <!-- Letra M: duas linhas verticais nas laterais e duas diagonais no meio -->
+  <!-- Linha vertical esquerda -->
+  <rect x="30" y="35" width="16" height="110" fill="#ffffff"/>
+  <!-- Linha vertical direita -->
+  <rect x="134" y="35" width="16" height="110" fill="#ffffff"/>
+  <!-- Diagonal esquerda (da linha esquerda ao pico do meio) -->
+  <polygon points="46,35 75,96.5 75,145 46,145" fill="#ffffff"/>
+  <!-- Diagonal direita (do pico do meio à linha direita) -->
+  <polygon points="105,96.5 134,35 134,145 105,145" fill="#ffffff"/>
+  <!-- Preencher o espaço entre as diagonais no topo -->
+  <rect x="75" y="35" width="30" height="61.5" fill="#ffffff"/>
+</svg>

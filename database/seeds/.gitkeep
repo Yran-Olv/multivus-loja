@@ -1,0 +1,3 @@
+# Esta pasta contém os seeders do Sequelize
+# Os seeds podem ser executados com: npm run db:seed
+

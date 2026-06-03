@@ -1,0 +1,94 @@
+# App em Docker; PostgreSQL, Nginx e Certbot ficam no host.
+# Instalação local: bash scripts/install.sh
+
+name: multivus-loja
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_DOMAIN: ${NEXT_PUBLIC_DOMAIN:-http://multivus.local}
+        NEXT_PUBLIC_BACKEND_DOMAIN: ${NEXT_PUBLIC_BACKEND_DOMAIN:-http://apiloja.multivus.local}
+    image: multivus-loja:latest
+    container_name: multivus-frontend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: ${FRONTEND_PORT:-3255}
+      HOSTNAME: 0.0.0.0
+      DB_HOST: host.docker.internal
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3255}:${FRONTEND_PORT:-3255}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./public/uploads:/app/public/uploads
+      - ./certs/efi:/app/certs/efi:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:'+(process.env.PORT||3255)).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  backend:
+    image: multivus-loja:latest
+    container_name: multivus-backend
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_started
+    env_file: .env
+    environment:
+      PORT: ${BACKEND_PORT:-3256}
+      HOSTNAME: 0.0.0.0
+      DB_HOST: host.docker.internal
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-3256}:${BACKEND_PORT:-3256}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./public/uploads:/app/public/uploads
+      - ./certs/efi:/app/certs/efi:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:'+(process.env.PORT||3256)).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  migrate:
+    profiles: [tools]
+    image: node:20-bookworm-slim
+    working_dir: /app
+    env_file: .env
+    environment:
+      DB_HOST: host.docker.internal
+      NODE_ENV: production
+    volumes:
+      - .:/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: >
+      sh -c "npm install --legacy-peer-deps --include=dev
+      && npx sequelize-cli db:migrate
+      && npx sequelize-cli db:seed --seed 20240101000000-seed-admin-user.js
+      && if [ \"$$SEED_DEMO_DATA\" = \"1\" ]; then
+           npx sequelize-cli db:seed --seed 20240101000001-seed-demo-catalog.js;
+         else
+           echo '[migrate] Catálogo demo omitido (produção). Dev: SEED_DEMO_DATA=1';
+         fi"

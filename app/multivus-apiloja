@@ -1,0 +1,78 @@
+# ============================================
+# BACKEND (API) - apiloja.multivus.com.br (porta 3256)
+# ============================================
+server {
+    server_name apiloja.multivus.com.br;
+
+    # Tamanho máximo de upload
+    client_max_body_size 50M;
+
+    # Logs
+    access_log /var/log/nginx/multivus-backend-access.log;
+    error_log /var/log/nginx/multivus-backend-error.log;
+
+    # Permitir Let's Encrypt
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types application/json application/javascript;
+
+    # Proxy apenas para rotas /api/* para o Next.js Backend (porta 3256)
+    location /api {
+        proxy_pass http://localhost:3256;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # CORS headers
+        add_header Access-Control-Allow-Origin $http_origin always;
+        add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "Content-Type, Authorization" always;
+        add_header Access-Control-Allow-Credentials "true" always;
+        
+        # Handle preflight
+        if ($request_method = OPTIONS) {
+            return 204;
+        }
+    }
+
+    # Bloquear acesso a rotas que não são API
+    location / {
+        return 404;
+    }
+
+    listen [::]:443 ssl ipv6only=on; # managed by Certbot
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/apiloja.multivus.com.br/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/apiloja.multivus.com.br/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+}
+server {
+    if ($host = apiloja.multivus.com.br) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    listen [::]:80;
+    server_name apiloja.multivus.com.br;
+    return 404; # managed by Certbot
+
+
+}

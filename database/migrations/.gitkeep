@@ -1,0 +1,3 @@
+# Esta pasta contém as migrations do Sequelize
+# As migrations são criadas automaticamente ou podem ser migradas dos scripts SQL
+
