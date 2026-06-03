@@ -27,25 +27,17 @@ Após executar seeds:
 
 ---
 
-## 🌐 Configuração de Domínios Personalizados
+## 🌐 CoA integração WhatsApp permite:
 
-O sistema permite configurar domínios personalizados para o painel administrativo.
-
-### Variáveis de Ambiente
-
-Adicione no arquivo `.env`:
-
+- ✅ Envio de mensagens de texto
+- ✅ Envio de mídia (imagens, documentos)
+- ✅ Envio de ordens de serviço via WhatsApp
+- ✅ Envio de recibos financeiros
+- ✅ Notificações de status de ordem
+- ✅ Envio de mensagens em massa
 ```env
 # Domínio único para admin (opcional)
-ADMIN_DOMAIN=admin.seudominio.com.br
-
-# OU múltiplos domínios separados por vírgula (opcional)
-ADMIN_DOMAINS=admin.seudominio.com.br,gestao.seudominio.com.br
-```
-
-### Configuração de DNS e Servidor Web
-
-1. **Configurar DNS**: Adicione registro A ou CNAME apontando para o IP do servidor
+ADMIN_ painel administrativo pode ser acessado de duas formasapontando para o IP do servidor
 2. **Configurar Nginx**: Configure virtual host para o(s) domínio(s)
 3. **Configurar SSL**: Use Certbot para certificado SSL
 

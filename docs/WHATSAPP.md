@@ -42,7 +42,7 @@ Chave de API: sua_chave_api_aqui
 
 Os números devem estar no formato internacional:
 - Formato: `5511999999999` (código do país + DDD + número)
-- Exemplo Brasil: `5511999999999` (55 = Brasil, 11 = DDD, 999999999 = número)
+- Exemplo Brasil: `5511999999orcamentos999` (55 = Brasil, 11 = DDD, 999999999 = número)
 
 ---
 
