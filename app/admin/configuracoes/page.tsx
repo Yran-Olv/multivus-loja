@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { MessageSquare, CreditCard, Settings } from "lucide-react"
+import { MessageSquare, CreditCard, Store } from "lucide-react"
 
 export default function ConfiguracoesPage() {
   return (
@@ -38,6 +38,23 @@ export default function ConfiguracoesPage() {
           <CardContent>
             <Link href="/admin/configuracoes/efi">
               <Button className="w-full">Configurar Efí Pix</Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Store className="h-5 w-5" />
+              Catálogo / Whaticket
+            </CardTitle>
+            <CardDescription>
+              Gere a chave para o Whaticket importar produtos, serviços e softwares desta loja
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/admin/configuracoes/catalogo">
+              <Button className="w-full">Configurar sincronização</Button>
             </Link>
           </CardContent>
         </Card>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
+import { getCatalogSyncApiKey } from "@/lib/catalog-sync"
 
 export const dynamic = "force-dynamic"
 
@@ -7,10 +8,13 @@ const unauthorized = () =>
   NextResponse.json({ error: "Não autorizado" }, { status: 401 })
 
 export async function GET(request: NextRequest) {
-  const apiKey = process.env.CATALOG_SYNC_API_KEY?.trim()
+  const apiKey = await getCatalogSyncApiKey()
   if (!apiKey) {
     return NextResponse.json(
-      { error: "CATALOG_SYNC_API_KEY não configurada no servidor da loja" },
+      {
+        error:
+          "Chave de sincronização não configurada. Gere em /admin/configuracoes/catalogo",
+      },
       { status: 503 }
     )
   }
