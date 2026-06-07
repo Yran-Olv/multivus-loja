@@ -6,6 +6,7 @@ import { Edit, Trash2, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { toggleProductStatus, deleteProduct } from "@/app/actions/products"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { useToast } from "@/hooks/use-toast"
 
 interface Product {
   id: number
@@ -18,22 +19,44 @@ interface Product {
 }
 
 export function ProductsTable({ products }: { products: Product[] }) {
+  const { toast } = useToast()
   const [items, setItems] = useState(products)
+  const [deleting, setDeleting] = useState(false)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; productId: number | null }>({
     open: false,
     productId: null,
   })
 
   const handleToggleStatus = async (id: number) => {
-    await toggleProductStatus(id)
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, is_active: !item.is_active } : item)))
+    try {
+      await toggleProductStatus(id)
+      setItems((prev) => prev.map((item) => (item.id === id ? { ...item, is_active: !item.is_active } : item)))
+    } catch (error: any) {
+      toast({
+        title: "Erro ao alterar status",
+        description: error?.message || "Tente novamente.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleDelete = async () => {
-    if (deleteDialog.productId) {
+    if (!deleteDialog.productId || deleting) return
+
+    setDeleting(true)
+    try {
       await deleteProduct(deleteDialog.productId)
       setItems((prev) => prev.filter((item) => item.id !== deleteDialog.productId))
       setDeleteDialog({ open: false, productId: null })
+      toast({ title: "Produto excluído" })
+    } catch (error: any) {
+      toast({
+        title: "Não foi possível excluir",
+        description: error?.message || "Tente novamente.",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleting(false)
     }
   }
 

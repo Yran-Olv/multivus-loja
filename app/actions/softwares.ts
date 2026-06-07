@@ -1,6 +1,7 @@
 "use server"
 
 import { sql } from "@/lib/db"
+import { deleteSoftwareSafe } from "@/lib/catalog-delete"
 import { revalidatePath } from "next/cache"
 
 export async function createSoftware(data: {
@@ -88,10 +89,6 @@ export async function toggleSoftwareStatus(id: number) {
 }
 
 export async function deleteSoftware(id: number) {
-  if (!sql) {
-    throw new Error("Database not available")
-  }
-
-  await sql!`DELETE FROM softwares WHERE id = ${id}`
+  await deleteSoftwareSafe(id)
   revalidatePath("/admin/softwares")
 }

@@ -6,6 +6,7 @@ import { Edit, Trash2, Eye, EyeOff } from "lucide-react"
 import { ServiceIcon } from "@/components/service-icon"
 import Link from "next/link"
 import { toggleServiceStatus, deleteService } from "@/app/actions/services"
+import { useToast } from "@/hooks/use-toast"
 
 interface Service {
   id: number
@@ -17,17 +18,35 @@ interface Service {
 }
 
 export function ServicesTable({ services }: { services: Service[] }) {
+  const { toast } = useToast()
   const [items, setItems] = useState(services)
 
   const handleToggleStatus = async (id: number) => {
-    await toggleServiceStatus(id)
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, is_active: !item.is_active } : item)))
+    try {
+      await toggleServiceStatus(id)
+      setItems((prev) => prev.map((item) => (item.id === id ? { ...item, is_active: !item.is_active } : item)))
+    } catch (error: any) {
+      toast({
+        title: "Erro ao alterar status",
+        description: error?.message || "Tente novamente.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleDelete = async (id: number) => {
-    if (confirm("Tem certeza que deseja excluir este serviço?")) {
+    if (!confirm("Tem certeza que deseja excluir este serviço?")) return
+
+    try {
       await deleteService(id)
       setItems((prev) => prev.filter((item) => item.id !== id))
+      toast({ title: "Serviço excluído" })
+    } catch (error: any) {
+      toast({
+        title: "Não foi possível excluir",
+        description: error?.message || "Tente novamente.",
+        variant: "destructive",
+      })
     }
   }
 

@@ -1,6 +1,7 @@
 "use server"
 
 import { sql } from "@/lib/db"
+import { deleteServiceSafe } from "@/lib/catalog-delete"
 import { revalidatePath } from "next/cache"
 
 export type ServiceFormData = {
@@ -112,11 +113,7 @@ export async function toggleServiceStatus(id: number) {
 }
 
 export async function deleteService(id: number) {
-  if (!sql) {
-    throw new Error("Database not available")
-  }
-
-  await sql!`DELETE FROM services WHERE id = ${id}`
+  await deleteServiceSafe(id)
   revalidatePath("/admin/servicos")
   revalidatePath("/servicos")
 }

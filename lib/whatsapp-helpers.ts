@@ -479,80 +479,18 @@ Você receberá um email de confirmação em breve. Nossa equipe entrará em con
         fullImageUrl = `${baseUrl}/${imageUrl.startsWith("/") ? imageUrl.substring(1) : imageUrl}`
       }
 
-      console.log("[WhatsApp] Baixando imagem do produto:", {
+      console.log("[WhatsApp] URL da imagem do produto:", {
         originalUrl: imageUrl,
-        fullUrl: fullImageUrl
+        fullUrl: fullImageUrl,
       })
 
-      // Baixar a imagem com timeout
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 segundos de timeout
-
-      let imageBase64: string
-      
-      try {
-        const imageResponse = await fetch(fullImageUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'image/*'
-          },
-          signal: controller.signal
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (!imageResponse.ok) {
-          console.error("[WhatsApp] Erro ao baixar imagem:", {
-            status: imageResponse.status,
-            statusText: imageResponse.statusText,
-            url: fullImageUrl
-          })
-          return
-        }
-
-        const imageBuffer = await imageResponse.arrayBuffer()
-        
-        if (imageBuffer.byteLength === 0) {
-          console.error("[WhatsApp] Imagem vazia ou inválida")
-          return
-        }
-        
-        imageBase64 = Buffer.from(imageBuffer).toString("base64")
-        const imageMimeType = imageResponse.headers.get("content-type") || "image/jpeg"
-        
-        console.log("[WhatsApp] Imagem convertida para base64:", {
-          size: imageBase64.length,
-          bufferSize: imageBuffer.byteLength,
-          mimeType: imageMimeType,
-          firstChars: imageBase64.substring(0, 50)
-        })
-        
-        if (!imageBase64 || imageBase64.length === 0) {
-          console.error("[WhatsApp] Falha ao converter imagem para base64")
-          return
-        }
-        
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId)
-        if (fetchError.name === 'AbortError') {
-          console.error("[WhatsApp] Timeout ao baixar imagem:", fullImageUrl)
-        } else {
-          console.error("[WhatsApp] Erro ao baixar imagem:", {
-            error: fetchError.message,
-            url: fullImageUrl
-          })
-        }
-        return
-      }
-
-      // Enviar imagem via API de mídia
       const { sql } = await import("./db")
-      
+
       if (!sql) {
         console.warn("[WhatsApp] Database não disponível para envio de mídia")
         return
       }
-      
+
       const configs = await sql!`
         SELECT token, endpoint, user_id, queue_id
         FROM whatsapp_config
@@ -570,7 +508,6 @@ Você receberá um email de confirmação em breve. Nossa equipe entrará em con
       const { formatPhoneNumber } = await import("./whatsapp")
       const formattedNumber = formatPhoneNumber(customerPhone)
 
-      // Criar legenda completa com informações do produto
       const pixHint = pixCopiaECola?.trim()
         ? `💳 *Pague via Pix* (código na mensagem anterior)
 
@@ -589,84 +526,49 @@ Obrigado por escolher a MULTIVUS! 🚀`
 
 ${pixHint}`
 
-      // Preparar payload - remover campos undefined
-      const mediaPayload: any = {
+      const linkImageEndpoint = String(config.endpoint || "").replace(/\/send\/?$/, "/send/linkImage")
+
+      const imagePayload: Record<string, string | boolean> = {
         number: formattedNumber,
-        body: productCaption,
-        medias: imageBase64, // A API espera apenas base64, sem data URI
+        url: fullImageUrl,
+        caption: productCaption,
         sendSignature: true,
         closeTicket: false,
       }
 
-      // Adicionar userId e queueId apenas se tiverem valor válido (não undefined)
       if (config.user_id && config.user_id.trim() !== "") {
-        mediaPayload.userId = config.user_id
+        imagePayload.userId = config.user_id
       }
-      
+
       if (config.queue_id && config.queue_id.trim() !== "") {
-        mediaPayload.queueId = config.queue_id
+        imagePayload.queueId = config.queue_id
       }
-      
-      // Remover campos undefined do payload
-      Object.keys(mediaPayload).forEach(key => {
-        if (mediaPayload[key] === undefined) {
-          delete mediaPayload[key]
-        }
-      })
 
-      console.log("[WhatsApp] Enviando imagem via API:", {
-        endpoint: config.endpoint,
+      console.log("[WhatsApp] Enviando imagem via linkImage:", {
+        endpoint: linkImageEndpoint,
         number: formattedNumber,
+        imageUrl: fullImageUrl,
         productName: firstItemWithImage.product_name,
-        captionLength: productCaption.length,
-        captionPreview: productCaption.substring(0, 100) + "...",
-        imageBase64Length: imageBase64.length,
-        imageBase64Preview: imageBase64.substring(0, 50) + "...",
-        payloadSize: JSON.stringify(mediaPayload).length,
-        hasUserId: !!mediaPayload.userId,
-        hasQueueId: !!mediaPayload.queueId,
-        payloadKeys: Object.keys(mediaPayload)
-      })
-      
-      console.log("[WhatsApp] Payload completo (sem base64):", {
-        ...mediaPayload,
-        medias: `[base64 string com ${imageBase64.length} caracteres]`
       })
 
-      const mediaResponse = await fetch(config.endpoint, {
+      const mediaResponse = await fetch(linkImageEndpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${config.token}`,
         },
-        body: JSON.stringify(mediaPayload),
+        body: JSON.stringify(imagePayload),
       })
 
       const responseText = await mediaResponse.text()
-      
+
       if (mediaResponse.ok) {
-        try {
-          const responseData = JSON.parse(responseText)
-          console.log("[WhatsApp] ✅ Imagem do produto enviada com sucesso:", {
-            status: responseData.status,
-            message: responseData.message,
-            data: responseData
-          })
-        } catch (e) {
-          console.log("[WhatsApp] ✅ Imagem do produto enviada com sucesso (resposta não-JSON):", responseText)
-        }
+        console.log("[WhatsApp] Imagem do produto enviada com sucesso:", responseText)
       } else {
-        console.error("[WhatsApp] ❌ Erro ao enviar imagem do produto:", {
+        console.error("[WhatsApp] Erro ao enviar imagem do produto:", {
           status: mediaResponse.status,
           statusText: mediaResponse.statusText,
           error: responseText,
-          payloadPreview: {
-            number: mediaPayload.number,
-            bodyLength: mediaPayload.body.length,
-            mediasLength: mediaPayload.medias.length,
-            hasUserId: !!mediaPayload.userId,
-            hasQueueId: !!mediaPayload.queueId
-          }
         })
       }
     } catch (error: any) {

@@ -1,0 +1,114 @@
+import { NextRequest, NextResponse } from "next/server"
+import { sql } from "@/lib/db"
+
+export const dynamic = "force-dynamic"
+
+const unauthorized = () =>
+  NextResponse.json({ error: "Não autorizado" }, { status: 401 })
+
+export async function GET(request: NextRequest) {
+  const apiKey = process.env.CATALOG_SYNC_API_KEY?.trim()
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "CATALOG_SYNC_API_KEY não configurada no servidor da loja" },
+      { status: 503 }
+    )
+  }
+
+  const providedKey =
+    request.headers.get("x-catalog-sync-key") ||
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
+    ""
+
+  if (providedKey !== apiKey) {
+    return unauthorized()
+  }
+
+  if (!sql) {
+    return NextResponse.json({ error: "Banco indisponível" }, { status: 503 })
+  }
+
+  const includeProducts = request.nextUrl.searchParams.get("products") !== "0"
+  const includeServices = request.nextUrl.searchParams.get("services") !== "0"
+  const includeSoftwares = request.nextUrl.searchParams.get("softwares") !== "0"
+
+  const items: Array<{
+    sourceType: "product" | "service" | "software"
+    sourceId: number
+    name: string
+    description: string | null
+    price: number
+    imageUrl: string | null
+    active: boolean
+    sortOrder: number
+  }> = []
+
+  if (includeProducts) {
+    const products = (await sql!`
+      SELECT id, name, description, price, image_url, is_active, created_at
+      FROM products
+      ORDER BY created_at DESC
+    `) as any[]
+
+    products.forEach((p, index) => {
+      items.push({
+        sourceType: "product",
+        sourceId: p.id,
+        name: p.name,
+        description: p.description || null,
+        price: Number(p.price) || 0,
+        imageUrl: p.image_url || null,
+        active: Boolean(p.is_active),
+        sortOrder: index
+      })
+    })
+  }
+
+  if (includeServices) {
+    const services = (await sql!`
+      SELECT id, name, description, price_from, is_active, created_at
+      FROM services
+      ORDER BY created_at DESC
+    `) as any[]
+
+    services.forEach((s, index) => {
+      items.push({
+        sourceType: "service",
+        sourceId: s.id,
+        name: s.name,
+        description: s.description || null,
+        price: Number(s.price_from) || 0,
+        imageUrl: null,
+        active: Boolean(s.is_active),
+        sortOrder: 1000 + index
+      })
+    })
+  }
+
+  if (includeSoftwares) {
+    const softwares = (await sql!`
+      SELECT id, name, description, short_description, price, image_url, is_active, created_at
+      FROM softwares
+      ORDER BY created_at DESC
+    `) as any[]
+
+    softwares.forEach((s, index) => {
+      items.push({
+        sourceType: "software",
+        sourceId: s.id,
+        name: s.name,
+        description: s.short_description || s.description || null,
+        price: Number(s.price) || 0,
+        imageUrl: s.image_url || null,
+        active: Boolean(s.is_active),
+        sortOrder: 2000 + index
+      })
+    })
+  }
+
+  return NextResponse.json({
+    source: "multivus-loja",
+    exportedAt: new Date().toISOString(),
+    items
+  })
+}

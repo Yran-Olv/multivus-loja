@@ -3,6 +3,7 @@
 import { sql } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { productSchema, sanitizeString } from "@/lib/validation"
+import { deleteProductCascade } from "@/lib/catalog-delete"
 
 export async function createProduct(data: {
   name: string
@@ -117,10 +118,7 @@ export async function toggleProductStatus(id: number) {
 }
 
 export async function deleteProduct(id: number) {
-  if (!sql) {
-    throw new Error("Database not available")
-  }
-
-  await sql!`DELETE FROM products WHERE id = ${id}`
+  await deleteProductCascade(id)
   revalidatePath("/admin/produtos")
+  revalidatePath("/produtos")
 }

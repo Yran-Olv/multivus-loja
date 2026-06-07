@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Edit, Trash2, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { toggleSoftwareStatus, deleteSoftware } from "@/app/actions/softwares"
+import { useToast } from "@/hooks/use-toast"
 
 interface Software {
   id: number
@@ -17,17 +18,35 @@ interface Software {
 }
 
 export function SoftwaresTable({ softwares }: { softwares: Software[] }) {
+  const { toast } = useToast()
   const [items, setItems] = useState(softwares)
 
   const handleToggleStatus = async (id: number) => {
-    await toggleSoftwareStatus(id)
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, is_active: !item.is_active } : item)))
+    try {
+      await toggleSoftwareStatus(id)
+      setItems((prev) => prev.map((item) => (item.id === id ? { ...item, is_active: !item.is_active } : item)))
+    } catch (error: any) {
+      toast({
+        title: "Erro ao alterar status",
+        description: error?.message || "Tente novamente.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleDelete = async (id: number) => {
-    if (confirm("Tem certeza que deseja excluir este software?")) {
+    if (!confirm("Tem certeza que deseja excluir este software?")) return
+
+    try {
       await deleteSoftware(id)
       setItems((prev) => prev.filter((item) => item.id !== id))
+      toast({ title: "Software excluído" })
+    } catch (error: any) {
+      toast({
+        title: "Não foi possível excluir",
+        description: error?.message || "Tente novamente.",
+        variant: "destructive",
+      })
     }
   }
 
