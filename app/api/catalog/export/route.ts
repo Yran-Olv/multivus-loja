@@ -91,19 +91,20 @@ export async function GET(request: NextRequest) {
 
   if (includeSoftwares) {
     const softwares = (await sql!`
-      SELECT id, name, description, short_description, price, image_url, is_active, created_at
+      SELECT id, name, description, short_description, price, screenshots, is_active, created_at
       FROM softwares
       ORDER BY created_at DESC
     `) as any[]
 
     softwares.forEach((s, index) => {
+      const screenshots = Array.isArray(s.screenshots) ? s.screenshots : []
       items.push({
         sourceType: "software",
         sourceId: s.id,
         name: s.name,
         description: s.short_description || s.description || null,
         price: Number(s.price) || 0,
-        imageUrl: s.image_url || null,
+        imageUrl: screenshots[0] || null,
         active: Boolean(s.is_active),
         sortOrder: 2000 + index
       })
