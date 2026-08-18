@@ -51,6 +51,12 @@ export async function GET(request: NextRequest) {
     activationMessageTemplate?: string | null
     orderIdPrefix?: string | null
     linkValidityDays?: number | null
+    soldOutMessage?: string | null
+    activationLinks?: Array<{
+      sourceLinkId: number
+      url: string
+      status: string
+    }>
   }> = []
 
   if (includeProducts) {
@@ -100,13 +106,21 @@ export async function GET(request: NextRequest) {
       SELECT
         id, name, description, short_description, version, price,
         image_url, screenshots, is_active, created_at,
-        activation_url, activation_message_template, order_id_prefix, link_validity_days
+        activation_url, activation_message_template, order_id_prefix, link_validity_days,
+        sold_out_message
       FROM softwares
       ORDER BY created_at DESC
     `) as any[]
 
-    softwares.forEach((s, index) => {
+    for (const s of softwares) {
       const screenshots = Array.isArray(s.screenshots) ? s.screenshots : []
+      const poolRows = (await sql!`
+        SELECT id, activation_url, status
+        FROM software_activation_links
+        WHERE software_id = ${s.id} AND status = 'available'
+        ORDER BY id ASC
+      `) as Array<{ id: number; activation_url: string; status: string }>
+
       items.push({
         sourceType: "software",
         sourceId: s.id,
@@ -117,16 +131,22 @@ export async function GET(request: NextRequest) {
         price: Number(s.price) || 0,
         imageUrl: s.image_url || screenshots[0] || null,
         active: Boolean(s.is_active),
-        sortOrder: 2000 + index,
+        sortOrder: 2000 + Number(s.id),
         activationUrl: s.activation_url || null,
         activationMessageTemplate: s.activation_message_template || null,
         orderIdPrefix: s.order_id_prefix || null,
         linkValidityDays:
           s.link_validity_days !== null && s.link_validity_days !== undefined
             ? Number(s.link_validity_days)
-            : null
+            : null,
+        soldOutMessage: s.sold_out_message || null,
+        activationLinks: poolRows.map(row => ({
+          sourceLinkId: row.id,
+          url: row.activation_url,
+          status: row.status
+        }))
       })
-    })
+    }
   }
 
   return NextResponse.json({

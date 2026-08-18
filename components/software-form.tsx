@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation"
 import { ImageUpload } from "@/components/image-upload"
 import {
   DEFAULT_SOFTWARE_ACTIVATION_TEMPLATE,
+  DEFAULT_SOLD_OUT_MESSAGE,
   SOFTWARE_DELIVERY_PLACEHOLDERS,
 } from "@/lib/software-delivery"
 
@@ -33,10 +34,12 @@ interface SoftwareFormProps {
     activation_message_template?: string | null
     order_id_prefix?: string | null
     link_validity_days?: number | null
+    sold_out_message?: string | null
   }
+  linkStats?: { available: number; used: number; total: number }
 }
 
-export function SoftwareForm({ software }: SoftwareFormProps) {
+export function SoftwareForm({ software, linkStats }: SoftwareFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [isFeatured, setIsFeatured] = useState(software?.is_featured || false)
@@ -71,6 +74,8 @@ export function SoftwareForm({ software }: SoftwareFormProps) {
         String(formData.get("activation_message_template") || "").trim() || null,
       order_id_prefix: String(formData.get("order_id_prefix") || "LNK").trim() || "LNK",
       link_validity_days: Number(formData.get("link_validity_days") || 7) || 7,
+      sold_out_message: String(formData.get("sold_out_message") || "").trim() || null,
+      activation_links_bulk: String(formData.get("activation_links_bulk") || "").trim() || null,
     }
 
     try {
@@ -191,25 +196,48 @@ export function SoftwareForm({ software }: SoftwareFormProps) {
         <div>
           <h3 className="font-semibold text-base">Entrega automática WhatsApp (Whaticket)</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Após o Pix confirmado no fluxo <strong>catalogSale</strong>, o Whaticket envia o link
-            de ativação e o ID do pedido. Sincronize o catálogo em{" "}
+            Cada venda consome <strong>um link diferente</strong> da lista. Quando acabar, o cliente
+            recebe a mensagem de alta demanda / suporte. Sincronize em{" "}
             <strong>/product-catalog</strong> no Whaticket.
           </p>
+          {linkStats ? (
+            <p className="text-sm mt-2 font-medium">
+              Estoque: {linkStats.available} disponível(is) · {linkStats.used} vendido(s) ·{" "}
+              {linkStats.total} total
+            </p>
+          ) : null}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="activation_url">Link de ativação</Label>
-          <Input
-            id="activation_url"
-            name="activation_url"
-            type="url"
-            defaultValue={software?.activation_url || ""}
-            placeholder="https://serviceactivation.google.com/..."
+          <Label htmlFor="activation_links_bulk">
+            Links de ativação (um por linha — cada venda usa um link)
+          </Label>
+          <Textarea
+            id="activation_links_bulk"
+            name="activation_links_bulk"
+            rows={8}
+            placeholder={
+              "https://serviceactivation.google.com/link-conta-1\nhttps://serviceactivation.google.com/link-conta-2\n..."
+            }
           />
           <p className="text-xs text-muted-foreground">
-            URL enviada automaticamente após confirmação do pagamento Pix
+            {software
+              ? "Cole aqui novos links para adicionar ao estoque (links já vendidos não são reutilizados)."
+              : "Cole todos os links disponíveis. Cada linha = uma conta Google / uma venda."}
           </p>
         </div>
+
+        {!software ? (
+          <div className="space-y-2">
+            <Label htmlFor="activation_url">Ou um único link (opcional se usou a lista acima)</Label>
+            <Input
+              id="activation_url"
+              name="activation_url"
+              type="url"
+              placeholder="https://serviceactivation.google.com/..."
+            />
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -248,6 +276,20 @@ export function SoftwareForm({ software }: SoftwareFormProps) {
           />
           <p className="text-xs text-muted-foreground">
             Placeholders: {SOFTWARE_DELIVERY_PLACEHOLDERS}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="sold_out_message">Mensagem quando links esgotarem (opcional)</Label>
+          <Textarea
+            id="sold_out_message"
+            name="sold_out_message"
+            rows={6}
+            defaultValue={software?.sold_out_message || ""}
+            placeholder={DEFAULT_SOLD_OUT_MESSAGE}
+          />
+          <p className="text-xs text-muted-foreground">
+            Enviada se o pagamento for confirmado mas não houver link disponível no estoque.
           </p>
         </div>
       </div>

@@ -124,6 +124,7 @@ export interface Software {
   activation_message_template?: string | null
   order_id_prefix?: string | null
   link_validity_days?: number | null
+  sold_out_message?: string | null
   created_at: Date
   updated_at: Date
 }
