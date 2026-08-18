@@ -44,48 +44,106 @@ const normalizeDelivery = (data: SoftwareDeliveryFields) => ({
   sold_out_message: String(data.sold_out_message || "").trim() || null,
 })
 
+type LinkInsertResult = { inserted: number; skipped: number; invalid: number }
+
 const insertBulkLinks = async (
   softwareId: number,
   bulkRaw?: string | null,
   fallbackSingle?: string | null
-) => {
+): Promise<LinkInsertResult> => {
   const fromBulk = parseActivationLinkLines(String(bulkRaw || ""))
   const links =
     fromBulk.length > 0
       ? fromBulk
       : fallbackSingle
-        ? [String(fallbackSingle).trim()].filter(Boolean)
+        ? parseActivationLinkLines(String(fallbackSingle))
         : []
 
-  if (!links.length) return 0
+  if (!links.length) {
+    const rawLines = String(bulkRaw || "")
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(Boolean)
+    return { inserted: 0, skipped: 0, invalid: rawLines.length }
+  }
 
   let inserted = 0
+  let skipped = 0
+
   for (const activation_url of links) {
     try {
-      await sql!`
+      const rows = (await sql!`
         INSERT INTO software_activation_links (software_id, activation_url, status)
         VALUES (${softwareId}, ${activation_url}, 'available')
         ON CONFLICT (activation_url) DO NOTHING
-      `
-      inserted += 1
+        RETURNING id
+      `) as Array<{ id: number }>
+
+      if (rows.length) inserted += 1
+      else skipped += 1
     } catch {
-      /* ignore duplicate */
+      skipped += 1
     }
   }
-  return inserted
+
+  const invalid = Math.max(
+    0,
+    String(bulkRaw || "")
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(Boolean).length - links.length
+  )
+
+  return { inserted, skipped, invalid }
 }
 
-export async function getSoftwareAvailableLinks(softwareId: number): Promise<string[]> {
+export type SoftwareAvailableLinkRow = { id: number; url: string }
+
+export async function getSoftwareAvailableLinkRows(
+  softwareId: number
+): Promise<SoftwareAvailableLinkRow[]> {
   if (!sql) return []
 
   const rows = (await sql!`
-    SELECT activation_url
+    SELECT id, activation_url
     FROM software_activation_links
     WHERE software_id = ${softwareId} AND status = 'available'
     ORDER BY id ASC
-  `) as Array<{ activation_url: string }>
+  `) as Array<{ id: number; activation_url: string }>
 
-  return rows.map(r => r.activation_url).filter(Boolean)
+  return rows
+    .map(r => ({ id: r.id, url: r.activation_url }))
+    .filter(r => Boolean(r.url))
+}
+
+export async function getSoftwareAvailableLinks(softwareId: number): Promise<string[]> {
+  const rows = await getSoftwareAvailableLinkRows(softwareId)
+  return rows.map(r => r.url)
+}
+
+export async function deleteSoftwareActivationLink(softwareId: number, linkId: number) {
+  if (!sql) {
+    throw new Error("Database not available")
+  }
+
+  const deleted = (await sql!`
+    DELETE FROM software_activation_links
+    WHERE id = ${linkId}
+      AND software_id = ${softwareId}
+      AND status = 'available'
+    RETURNING id
+  `) as Array<{ id: number }>
+
+  if (!deleted.length) {
+    throw new Error("Link não encontrado ou já foi vendido — não pode ser excluído.")
+  }
+
+  revalidatePath("/admin/softwares")
+  revalidatePath(`/admin/softwares/${softwareId}`)
+  revalidatePath("/softwares")
+  revalidatePath(`/softwares/${softwareId}`)
+
+  return { success: true }
 }
 
 export async function getSoftwareLinkStats(softwareId: number) {
@@ -101,6 +159,17 @@ export async function getSoftwareLinkStats(softwareId: number) {
   const available = rows.find(r => r.status === "available")?.count || 0
   const used = rows.find(r => r.status === "used")?.count || 0
   return { available, used, total: available + used }
+}
+
+const parsePriceInput = (raw: unknown): number => {
+  const text = String(raw ?? "")
+    .trim()
+    .replace(/[^\d,.-]/g, "")
+  if (!text) return Number.NaN
+  if (text.includes(",")) {
+    return Number.parseFloat(text.replace(/\./g, "").replace(",", "."))
+  }
+  return Number.parseFloat(text)
 }
 
 export async function createSoftware(data: SoftwarePayload) {
@@ -122,6 +191,11 @@ export async function createSoftware(data: SoftwarePayload) {
   const safeShortDescription = data.short_description ?? null
   const safeVersion = data.version ?? null
   const safeImageUrl = data.image_url ?? null
+  const price = parsePriceInput(data.price)
+
+  if (!Number.isFinite(price) || price < 0) {
+    throw new Error("Preço inválido. Use formato como 99,90")
+  }
 
   const inserted = (await sql!`
     INSERT INTO softwares (
@@ -131,7 +205,7 @@ export async function createSoftware(data: SoftwarePayload) {
       sold_out_message
     )
     VALUES (
-      ${data.name}, ${data.description}, ${safeShortDescription}, ${safeVersion}, ${data.price},
+      ${data.name}, ${data.description}, ${safeShortDescription}, ${safeVersion}, ${price},
       ${data.category}, ${safeImageUrl}, ${data.features}, ${JSON.stringify(data.system_requirements)},
       ${data.is_featured}, ${delivery.activation_url}, ${delivery.activation_message_template},
       ${delivery.order_id_prefix}, ${delivery.link_validity_days}, ${delivery.sold_out_message}
@@ -144,7 +218,7 @@ export async function createSoftware(data: SoftwarePayload) {
     throw new Error("Falha ao criar software")
   }
 
-  await insertBulkLinks(
+  const linkResult = await insertBulkLinks(
     softwareId,
     data.activation_links_bulk,
     data.activation_url
@@ -152,6 +226,8 @@ export async function createSoftware(data: SoftwarePayload) {
 
   revalidatePath("/admin/softwares")
   revalidatePath("/softwares")
+
+  return linkResult
 }
 
 export async function updateSoftware(id: number, data: SoftwarePayload) {
@@ -163,6 +239,11 @@ export async function updateSoftware(id: number, data: SoftwarePayload) {
   const safeShortDescription = data.short_description ?? null
   const safeVersion = data.version ?? null
   const safeImageUrl = data.image_url ?? null
+  const price = parsePriceInput(data.price)
+
+  if (!Number.isFinite(price) || price < 0) {
+    throw new Error("Preço inválido. Use formato como 99,90")
+  }
 
   await sql!`
     UPDATE softwares 
@@ -170,7 +251,7 @@ export async function updateSoftware(id: number, data: SoftwarePayload) {
         description = ${data.description}, 
         short_description = ${safeShortDescription},
         version = ${safeVersion},
-        price = ${data.price}, 
+        price = ${price}, 
         category = ${data.category}, 
         icon = ${safeImageUrl}, 
         features = ${data.features}, 
@@ -185,11 +266,14 @@ export async function updateSoftware(id: number, data: SoftwarePayload) {
     WHERE id = ${id}
   `
 
-  await insertBulkLinks(id, data.activation_links_bulk, null)
+  const linkResult = await insertBulkLinks(id, data.activation_links_bulk, null)
 
   revalidatePath("/admin/softwares")
+  revalidatePath(`/admin/softwares/${id}`)
   revalidatePath("/softwares")
   revalidatePath(`/softwares/${id}`)
+
+  return linkResult
 }
 
 export async function toggleSoftwareStatus(id: number) {

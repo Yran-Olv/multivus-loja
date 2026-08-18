@@ -30,12 +30,25 @@ Obrigado pela compreensão! 🙏`
 export const SOFTWARE_DELIVERY_PLACEHOLDERS =
   "{{productName}}, {{activationUrl}}, {{orderId}}, {{contactName}}, {{validityDays}}"
 
+/** Remove emoji, espaços e extrai https://... de textos colados do WhatsApp */
+export const normalizeActivationUrl = (raw: string): string => {
+  const text = String(raw || "").trim()
+  if (!text) return ""
+
+  const match = text.match(/https?:\/\/[^\s<>"']+/i)
+  if (match) {
+    return match[0].replace(/[.,;)\]}>]+$/, "")
+  }
+
+  return text.replace(/^[^\w]*(?=https?:\/\/)/i, "").trim()
+}
+
 export const parseActivationLinkLines = (raw: string): string[] => {
   const seen = new Set<string>()
   const links: string[] = []
   for (const line of String(raw || "").split(/\r?\n/)) {
-    const url = line.trim()
-    if (!url || seen.has(url)) continue
+    const url = normalizeActivationUrl(line)
+    if (!url || !/^https?:\/\//i.test(url) || seen.has(url)) continue
     seen.add(url)
     links.push(url)
   }

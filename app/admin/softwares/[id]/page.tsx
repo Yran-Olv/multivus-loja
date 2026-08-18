@@ -1,6 +1,6 @@
 import { sql, type Software } from "@/lib/db"
 import { SoftwareForm } from "@/components/software-form"
-import { getSoftwareLinkStats, getSoftwareAvailableLinks } from "@/app/actions/softwares"
+import { getSoftwareLinkStats, getSoftwareAvailableLinkRows } from "@/app/actions/softwares"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { notFound } from "next/navigation"
 
@@ -19,7 +19,7 @@ export default async function EditSoftwarePage({ params }: { params: Promise<{ i
 
   const software = softwares[0]
   const linkStats = await getSoftwareLinkStats(Number(id))
-  const availableLinks = await getSoftwareAvailableLinks(Number(id))
+  const availableLinkRows = await getSoftwareAvailableLinkRows(Number(id))
 
   return (
     <div className="space-y-6">
@@ -35,7 +35,7 @@ export default async function EditSoftwarePage({ params }: { params: Promise<{ i
         <CardContent>
           <SoftwareForm
             linkStats={linkStats}
-            availableLinks={availableLinks}
+            availableLinkRows={availableLinkRows}
             software={{
               id: software.id,
               name: software.name,
