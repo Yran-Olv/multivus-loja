@@ -120,6 +120,10 @@ export interface Software {
   platform: string | null
   system_requirements: Record<string, string> | null
   is_active: boolean
+  activation_url?: string | null
+  activation_message_template?: string | null
+  order_id_prefix?: string | null
+  link_validity_days?: number | null
   created_at: Date
   updated_at: Date
 }

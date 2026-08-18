@@ -41,10 +41,16 @@ export async function GET(request: NextRequest) {
     sourceId: number
     name: string
     description: string | null
+    shortDescription?: string | null
+    version?: string | null
     price: number
     imageUrl: string | null
     active: boolean
     sortOrder: number
+    activationUrl?: string | null
+    activationMessageTemplate?: string | null
+    orderIdPrefix?: string | null
+    linkValidityDays?: number | null
   }> = []
 
   if (includeProducts) {
@@ -91,7 +97,10 @@ export async function GET(request: NextRequest) {
 
   if (includeSoftwares) {
     const softwares = (await sql!`
-      SELECT id, name, description, short_description, price, screenshots, is_active, created_at
+      SELECT
+        id, name, description, short_description, version, price,
+        image_url, screenshots, is_active, created_at,
+        activation_url, activation_message_template, order_id_prefix, link_validity_days
       FROM softwares
       ORDER BY created_at DESC
     `) as any[]
@@ -102,11 +111,20 @@ export async function GET(request: NextRequest) {
         sourceType: "software",
         sourceId: s.id,
         name: s.name,
-        description: s.short_description || s.description || null,
+        description: s.description || null,
+        shortDescription: s.short_description || null,
+        version: s.version || null,
         price: Number(s.price) || 0,
-        imageUrl: screenshots[0] || null,
+        imageUrl: s.image_url || screenshots[0] || null,
         active: Boolean(s.is_active),
-        sortOrder: 2000 + index
+        sortOrder: 2000 + index,
+        activationUrl: s.activation_url || null,
+        activationMessageTemplate: s.activation_message_template || null,
+        orderIdPrefix: s.order_id_prefix || null,
+        linkValidityDays:
+          s.link_validity_days !== null && s.link_validity_days !== undefined
+            ? Number(s.link_validity_days)
+            : null
       })
     })
   }

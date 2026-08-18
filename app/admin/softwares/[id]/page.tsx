@@ -41,7 +41,11 @@ export default async function EditSoftwarePage({ params }: { params: Promise<{ i
             image_url: software.icon || "",
             features: software.features || [],
             system_requirements: software.system_requirements || {},
-            is_featured: software.is_featured
+            is_featured: software.is_featured,
+            activation_url: software.activation_url || "",
+            activation_message_template: software.activation_message_template || "",
+            order_id_prefix: software.order_id_prefix || "LNK",
+            link_validity_days: software.link_validity_days ?? 7,
           }} />
         </CardContent>
       </Card>
