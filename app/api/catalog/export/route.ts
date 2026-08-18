@@ -115,11 +115,16 @@ export async function GET(request: NextRequest) {
     for (const s of softwares) {
       const screenshots = Array.isArray(s.screenshots) ? s.screenshots : []
       const poolRows = (await sql!`
-        SELECT id, activation_url, status
+        SELECT id, activation_url, status, short_code
         FROM software_activation_links
         WHERE software_id = ${s.id} AND status = 'available'
         ORDER BY id ASC
-      `) as Array<{ id: number; activation_url: string; status: string }>
+      `) as Array<{
+        id: number
+        activation_url: string
+        status: string
+        short_code: string | null
+      }>
 
       items.push({
         sourceType: "software",
@@ -143,6 +148,7 @@ export async function GET(request: NextRequest) {
         activationLinks: poolRows.map(row => ({
           sourceLinkId: row.id,
           url: row.activation_url,
+          shortCode: row.short_code || null,
           status: row.status
         }))
       })

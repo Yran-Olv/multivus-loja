@@ -1,6 +1,7 @@
 import { sql, type Software } from "@/lib/db"
 import { SoftwareForm } from "@/components/software-form"
 import { getSoftwareLinkStats, getSoftwareAvailableLinkRows } from "@/app/actions/softwares"
+import { buildActivationShortUrl } from "@/lib/activation-short-url"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { notFound } from "next/navigation"
 
@@ -20,6 +21,14 @@ export default async function EditSoftwarePage({ params }: { params: Promise<{ i
   const software = softwares[0]
   const linkStats = await getSoftwareLinkStats(Number(id))
   const availableLinkRows = await getSoftwareAvailableLinkRows(Number(id))
+  const siteBase =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_DOMAIN ||
+    "https://multivus.shop"
+  const availableLinksForForm = availableLinkRows.map(row => ({
+    ...row,
+    shortUrl: row.shortCode ? buildActivationShortUrl(row.shortCode, siteBase) : null,
+  }))
 
   return (
     <div className="space-y-6">
@@ -35,7 +44,7 @@ export default async function EditSoftwarePage({ params }: { params: Promise<{ i
         <CardContent>
           <SoftwareForm
             linkStats={linkStats}
-            availableLinkRows={availableLinkRows}
+            availableLinkRows={availableLinksForForm}
             software={{
               id: software.id,
               name: software.name,

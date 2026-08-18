@@ -46,7 +46,7 @@ interface SoftwareFormProps {
     sold_out_message?: string | null
   }
   linkStats?: { available: number; used: number; total: number }
-  availableLinkRows?: SoftwareAvailableLinkRow[]
+  availableLinkRows?: Array<SoftwareAvailableLinkRow & { shortUrl?: string | null }>
 }
 
 const truncateUrl = (url: string, max = 72) =>
@@ -360,13 +360,38 @@ export function SoftwareForm({
               {availableLinkRows.map(row => (
                 <li
                   key={row.id}
-                  className="flex items-center gap-2 rounded-md border bg-background px-3 py-2"
+                  className="flex flex-col gap-1 rounded-md border bg-background px-3 py-2 sm:flex-row sm:items-center sm:gap-2"
                 >
-                  <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="flex-1 truncate font-mono text-xs" title={row.url}>
-                    {truncateUrl(row.url)}
-                  </span>
-                  <Badge variant="secondary">disponível</Badge>
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      {row.shortUrl ? (
+                        <>
+                          <a
+                            href={row.shortUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block truncate font-mono text-xs text-primary hover:underline"
+                            title={row.shortUrl}
+                          >
+                            {row.shortUrl}
+                          </a>
+                          <span
+                            className="block truncate font-mono text-[10px] text-muted-foreground"
+                            title={row.url}
+                          >
+                            → {truncateUrl(row.url, 56)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="block truncate font-mono text-xs" title={row.url}>
+                          {truncateUrl(row.url)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <Badge variant="secondary">disponível</Badge>
                   <Button
                     type="button"
                     variant="outline"
@@ -382,6 +407,7 @@ export function SoftwareForm({
                       <Trash2 className="h-4 w-4" />
                     )}
                   </Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -429,8 +455,8 @@ export function SoftwareForm({
           </Button>
 
           <p className="text-xs text-muted-foreground">
-            Cole o link (pode incluir emoji 🔗 — será limpo automaticamente). Depois clique{" "}
-            <strong>Atualizar Software</strong> para salvar no estoque.
+            Cole o link longo (pode incluir emoji 🔗). No WhatsApp o cliente recebe o link curto{" "}
+            <strong>/r/...</strong> que redireciona automaticamente.
           </p>
         </div>
 

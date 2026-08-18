@@ -3,6 +3,7 @@
 import { sql } from "@/lib/db"
 import { deleteSoftwareSafe } from "@/lib/catalog-delete"
 import { parseActivationLinkLines } from "@/lib/software-delivery"
+import { generateActivationShortCode } from "@/lib/activation-short-url"
 import { revalidatePath } from "next/cache"
 
 export type SoftwareDeliveryFields = {
@@ -71,18 +72,27 @@ const insertBulkLinks = async (
   let skipped = 0
 
   for (const activation_url of links) {
-    try {
-      const rows = (await sql!`
-        INSERT INTO software_activation_links (software_id, activation_url, status)
-        VALUES (${softwareId}, ${activation_url}, 'available')
-        ON CONFLICT (activation_url) DO NOTHING
-        RETURNING id
-      `) as Array<{ id: number }>
+    let saved = false
+    for (let attempt = 0; attempt < 6 && !saved; attempt += 1) {
+      try {
+        const short_code = generateActivationShortCode()
+        const rows = (await sql!`
+          INSERT INTO software_activation_links (software_id, activation_url, status, short_code)
+          VALUES (${softwareId}, ${activation_url}, 'available', ${short_code})
+          ON CONFLICT (activation_url) DO NOTHING
+          RETURNING id
+        `) as Array<{ id: number }>
 
-      if (rows.length) inserted += 1
-      else skipped += 1
-    } catch {
-      skipped += 1
+        if (rows.length) {
+          inserted += 1
+          saved = true
+        } else {
+          skipped += 1
+          saved = true
+        }
+      } catch {
+        if (attempt === 5) skipped += 1
+      }
     }
   }
 
@@ -97,7 +107,11 @@ const insertBulkLinks = async (
   return { inserted, skipped, invalid }
 }
 
-export type SoftwareAvailableLinkRow = { id: number; url: string }
+export type SoftwareAvailableLinkRow = {
+  id: number
+  url: string
+  shortCode: string | null
+}
 
 export async function getSoftwareAvailableLinkRows(
   softwareId: number
@@ -105,14 +119,18 @@ export async function getSoftwareAvailableLinkRows(
   if (!sql) return []
 
   const rows = (await sql!`
-    SELECT id, activation_url
+    SELECT id, activation_url, short_code
     FROM software_activation_links
     WHERE software_id = ${softwareId} AND status = 'available'
     ORDER BY id ASC
-  `) as Array<{ id: number; activation_url: string }>
+  `) as Array<{ id: number; activation_url: string; short_code: string | null }>
 
   return rows
-    .map(r => ({ id: r.id, url: r.activation_url }))
+    .map(r => ({
+      id: r.id,
+      url: r.activation_url,
+      shortCode: r.short_code || null,
+    }))
     .filter(r => Boolean(r.url))
 }
 
