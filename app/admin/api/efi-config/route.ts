@@ -3,6 +3,11 @@ import { sql } from "@/lib/db"
 import { normalizeEfiCertificatePath } from "@/lib/efi/certificate-path"
 import { verifyAuth } from "@/lib/middleware"
 
+const sanitizeCredential = (value: unknown): string =>
+  String(value || "")
+    .trim()
+    .replace(/^>\s*/, "")
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await verifyAuth(request)
@@ -70,17 +75,20 @@ export async function POST(request: NextRequest) {
     }
 
     const certPath = certificate_path ? normalizeEfiCertificatePath(certificate_path) : null
+    const cleanClientId = sanitizeCredential(client_id)
+    const cleanClientSecret = client_secret ? sanitizeCredential(client_secret) : null
+    const cleanPixKey = sanitizeCredential(pix_key)
 
     const existing = await sql!`SELECT id FROM efi_config WHERE is_active = true LIMIT 1`
 
     if (existing.length > 0) {
-      if (client_secret) {
+      if (cleanClientSecret) {
         await sql!`
           UPDATE efi_config
-          SET client_id = ${client_id},
-              client_secret = ${client_secret},
+          SET client_id = ${cleanClientId},
+              client_secret = ${cleanClientSecret},
               environment = ${environment},
-              pix_key = ${pix_key},
+              pix_key = ${cleanPixKey},
               certificate_path = ${certPath},
               certificate_passphrase = ${certificate_passphrase || null},
               webhook_url = ${webhook_url || null},
@@ -90,17 +98,18 @@ export async function POST(request: NextRequest) {
       } else {
         await sql!`
           UPDATE efi_config
-          SET client_id = ${client_id},
+          SET client_id = ${cleanClientId},
               environment = ${environment},
-              pix_key = ${pix_key},
+              pix_key = ${cleanPixKey},
               certificate_path = ${certPath},
+              certificate_passphrase = COALESCE(${certificate_passphrase || null}, certificate_passphrase),
               webhook_url = ${webhook_url || null},
               updated_at = CURRENT_TIMESTAMP
           WHERE is_active = true
         `
       }
     } else {
-      if (!client_secret) {
+      if (!cleanClientSecret) {
         return NextResponse.json({ error: "Client Secret é obrigatório na primeira configuração" }, { status: 400 })
       }
       await sql!`UPDATE efi_config SET is_active = false WHERE is_active = true`
@@ -110,7 +119,7 @@ export async function POST(request: NextRequest) {
           certificate_path, certificate_passphrase, webhook_url, is_active
         )
         VALUES (
-          ${client_id}, ${client_secret}, ${environment}, ${pix_key},
+          ${cleanClientId}, ${cleanClientSecret}, ${environment}, ${cleanPixKey},
           ${certPath}, ${certificate_passphrase || null}, ${webhook_url || null}, true
         )
       `

@@ -75,6 +75,19 @@ const insertBulkLinks = async (
   return inserted
 }
 
+export async function getSoftwareAvailableLinks(softwareId: number): Promise<string[]> {
+  if (!sql) return []
+
+  const rows = (await sql!`
+    SELECT activation_url
+    FROM software_activation_links
+    WHERE software_id = ${softwareId} AND status = 'available'
+    ORDER BY id ASC
+  `) as Array<{ activation_url: string }>
+
+  return rows.map(r => r.activation_url).filter(Boolean)
+}
+
 export async function getSoftwareLinkStats(softwareId: number) {
   if (!sql) return { available: 0, used: 0, total: 0 }
 
@@ -112,7 +125,7 @@ export async function createSoftware(data: SoftwarePayload) {
 
   const inserted = (await sql!`
     INSERT INTO softwares (
-      name, description, short_description, version, price, category, image_url,
+      name, description, short_description, version, price, category, icon,
       features, system_requirements, is_featured,
       activation_url, activation_message_template, order_id_prefix, link_validity_days,
       sold_out_message
@@ -159,7 +172,7 @@ export async function updateSoftware(id: number, data: SoftwarePayload) {
         version = ${safeVersion},
         price = ${data.price}, 
         category = ${data.category}, 
-        image_url = ${safeImageUrl}, 
+        icon = ${safeImageUrl}, 
         features = ${data.features}, 
         system_requirements = ${JSON.stringify(data.system_requirements)},
         is_featured = ${data.is_featured},

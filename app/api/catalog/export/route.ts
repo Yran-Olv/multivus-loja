@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
     const softwares = (await sql!`
       SELECT
         id, name, description, short_description, version, price,
-        image_url, screenshots, is_active, created_at,
+        icon, screenshots, is_active, created_at,
         activation_url, activation_message_template, order_id_prefix, link_validity_days,
         sold_out_message
       FROM softwares
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
         shortDescription: s.short_description || null,
         version: s.version || null,
         price: Number(s.price) || 0,
-        imageUrl: s.image_url || screenshots[0] || null,
+        imageUrl: s.icon || screenshots[0] || null,
         active: Boolean(s.is_active),
         sortOrder: 2000 + Number(s.id),
         activationUrl: s.activation_url || null,

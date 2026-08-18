@@ -19,3 +19,4 @@ terminals
 coverage
 .vscode
 .idea
+public/uploads

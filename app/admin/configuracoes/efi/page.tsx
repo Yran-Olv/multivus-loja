@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -9,31 +9,57 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, CreditCard, Save, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react"
+import {
+  Loader2,
+  CreditCard,
+  Save,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  XCircle,
+  Upload,
+  FileKey,
+} from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const efiConfigSchema = z.object({
   client_id: z.string().min(1, "Client ID é obrigatório"),
   client_secret: z.string().optional(),
   environment: z.enum(["sandbox", "production"]),
   pix_key: z.string().min(1, "Chave Pix é obrigatória"),
-  certificate_path: z.string().min(1, "Caminho do certificado .p12 é obrigatório para API Pix"),
+  certificate_path: z.string().min(1, "Selecione ou envie um certificado .p12"),
   certificate_passphrase: z.string().optional(),
   webhook_url: z.string().url("URL inválida").optional().or(z.literal("")),
 })
 
 type EfiConfigFormValues = z.infer<typeof efiConfigSchema>
 
+type CertOption = { fileName: string; path: string; size: number }
+
 function buildWebhookUrl(origin: string) {
   return `${origin.replace(/\/$/, "")}/api/efi/webhook`
+}
+
+function formatBytes(size: number) {
+  if (size < 1024) return `${size} B`
+  return `${(size / 1024).toFixed(1)} KB`
 }
 
 export default function EfiConfigPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingCert, setUploadingCert] = useState(false)
   const [showSecret, setShowSecret] = useState(false)
   const [configured, setConfigured] = useState(false)
+  const [certificates, setCertificates] = useState<CertOption[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
   const suggestedWebhook =
@@ -46,18 +72,32 @@ export default function EfiConfigPage() {
       client_secret: "",
       environment: "sandbox",
       pix_key: "",
-      certificate_path: "/app/certs/efi/homologacao.p12",
+      certificate_path: "",
       certificate_passphrase: "",
       webhook_url: "",
     },
   })
+
+  const loadCertificates = async () => {
+    try {
+      const res = await fetch("/admin/api/efi-config/certificate")
+      const data = await res.json()
+      if (res.ok && Array.isArray(data.certificates)) {
+        setCertificates(data.certificates)
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 
   useEffect(() => {
     async function load() {
       try {
         const origin = window.location.origin
         const defaultWebhook = buildWebhookUrl(origin)
-        const res = await fetch("/api/efi-config")
+        await loadCertificates()
+
+        const res = await fetch("/admin/api/efi-config")
         const data = await res.json()
 
         if (data.config) {
@@ -66,7 +106,7 @@ export default function EfiConfigPage() {
             client_secret: "",
             environment: data.config.environment || "sandbox",
             pix_key: data.config.pix_key || "",
-            certificate_path: data.config.certificate_path || "/app/certs/efi/homologacao.p12",
+            certificate_path: data.config.certificate_path || "",
             certificate_passphrase: "",
             webhook_url: data.config.webhook_url || defaultWebhook,
           })
@@ -75,13 +115,51 @@ export default function EfiConfigPage() {
           form.setValue("webhook_url", defaultWebhook)
         }
       } catch {
-        toast({ title: "Erro", description: "Não foi possível carregar a configuração.", variant: "destructive" })
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar a configuração.",
+          variant: "destructive",
+        })
       } finally {
         setLoading(false)
       }
     }
     load()
   }, [form, toast])
+
+  const handleCertificateUpload = async (file: File) => {
+    setUploadingCert(true)
+    try {
+      const body = new FormData()
+      body.append("certificate", file)
+
+      const res = await fetch("/admin/api/efi-config/certificate", {
+        method: "POST",
+        body,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Falha no upload")
+
+      await loadCertificates()
+      if (data.path) {
+        form.setValue("certificate_path", data.path, { shouldValidate: true })
+      }
+
+      toast({
+        title: "Certificado enviado",
+        description: data.fileName || "Arquivo salvo em certs/efi/",
+      })
+    } catch (e: unknown) {
+      toast({
+        title: "Erro no upload",
+        description: e instanceof Error ? e.message : "Não foi possível enviar o certificado",
+        variant: "destructive",
+      })
+    } finally {
+      setUploadingCert(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
 
   const onSubmit = async (values: EfiConfigFormValues) => {
     if (!configured && !values.client_secret?.trim()) {
@@ -90,14 +168,17 @@ export default function EfiConfigPage() {
     }
     setSaving(true)
     try {
-      const res = await fetch("/api/efi-config", {
+      const res = await fetch("/admin/api/efi-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Erro ao salvar")
-      toast({ title: "Salvo!", description: "Configuração Efí atualizada." })
+      toast({
+        title: "Salvo!",
+        description: "Configuração Efí atualizada. Sincronize o catálogo no Whaticket.",
+      })
       setConfigured(true)
     } catch (e: unknown) {
       toast({
@@ -109,6 +190,8 @@ export default function EfiConfigPage() {
       setSaving(false)
     }
   }
+
+  const selectedCert = form.watch("certificate_path")
 
   if (loading) {
     return (
@@ -122,7 +205,9 @@ export default function EfiConfigPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-2">Efí (Gerencianet) — Pix</h1>
-        <p className="text-muted-foreground">Pagamentos via API Pix da Efí Bank</p>
+        <p className="text-muted-foreground">
+          Pagamentos Pix da loja e do fluxo automático WhatsApp (Whaticket)
+        </p>
       </div>
 
       <Alert variant={configured ? "default" : "destructive"}>
@@ -130,7 +215,7 @@ export default function EfiConfigPage() {
         <AlertTitle>{configured ? "Configurado" : "Não configurado"}</AlertTitle>
         <AlertDescription>
           {configured
-            ? "Credenciais salvas. Checkout da loja gera QR Code Pix."
+            ? "Credenciais salvas. Após alterar, clique em Sincronizar loja no Whaticket (/product-catalog)."
             : "Configure credenciais, chave Pix e certificado .p12 da conta Efí."}
         </AlertDescription>
       </Alert>
@@ -159,7 +244,7 @@ export default function EfiConfigPage() {
                 <Label htmlFor="environment">Ambiente</Label>
                 <Select
                   value={form.watch("environment")}
-                  onValueChange={(v) => form.setValue("environment", v as "sandbox" | "production")}
+                  onValueChange={v => form.setValue("environment", v as "sandbox" | "production")}
                   disabled={saving}
                 >
                   <SelectTrigger>
@@ -185,30 +270,102 @@ export default function EfiConfigPage() {
                 type={showSecret ? "text" : "password"}
                 {...form.register("client_secret")}
                 disabled={saving}
+                placeholder={configured ? "Deixe em branco para manter o atual" : ""}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="pix_key">Chave Pix</Label>
-              <Input id="pix_key" {...form.register("pix_key")} placeholder="EVP, e-mail, CPF/CNPJ ou telefone" disabled={saving} />
+              <Input
+                id="pix_key"
+                {...form.register("pix_key")}
+                placeholder="EVP, e-mail, CPF/CNPJ ou telefone"
+                disabled={saving}
+              />
               {form.formState.errors.pix_key && (
                 <p className="text-sm text-destructive">{form.formState.errors.pix_key.message}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="certificate_path">Caminho do certificado (.p12)</Label>
-              <Input
-                id="certificate_path"
-                {...form.register("certificate_path")}
-                placeholder="/app/certs/efi/homologacao.p12"
-                disabled={saving}
-              />
-              <p className="text-xs text-muted-foreground">
-                Baixe em Efí → API → Meus Certificados. Na VPS: arquivo em{" "}
-                <code className="bg-muted px-1 rounded">certs/efi/nome.p12</code> — use sempre{" "}
-                <code className="bg-muted px-1 rounded">/app/certs/efi/nome.p12</code> (não use /var/www/...).
-              </p>
+            <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <FileKey className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <Label>Certificado digital (.p12 / .pfx)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Envie o arquivo pelo painel ou selecione um já enviado
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".p12,.pfx,application/x-pkcs12"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) handleCertificateUpload(file)
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploadingCert || saving}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="sm:w-auto"
+                >
+                  {uploadingCert ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="mr-2 h-4 w-4" />
+                  )}
+                  Enviar certificado
+                </Button>
+              </div>
+
+              {certificates.length > 0 ? (
+                <div className="space-y-2">
+                  <Label htmlFor="certificate_path">Certificado ativo</Label>
+                  <Select
+                    value={selectedCert || undefined}
+                    onValueChange={v => form.setValue("certificate_path", v, { shouldValidate: true })}
+                    disabled={saving}
+                  >
+                    <SelectTrigger id="certificate_path">
+                      <SelectValue placeholder="Selecione um certificado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {certificates.map(cert => (
+                        <SelectItem key={cert.path} value={cert.path}>
+                          {cert.fileName} ({formatBytes(cert.size)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="certificate_path_manual">Caminho do certificado</Label>
+                  <Input
+                    id="certificate_path_manual"
+                    {...form.register("certificate_path")}
+                    placeholder="/app/certs/efi/seu-certificado.p12"
+                    disabled={saving}
+                  />
+                </div>
+              )}
+
+              {form.formState.errors.certificate_path && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.certificate_path.message}
+                </p>
+              )}
+
+              {selectedCert ? (
+                <p className="text-xs text-muted-foreground font-mono break-all">{selectedCert}</p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -230,7 +387,7 @@ export default function EfiConfigPage() {
                 disabled={saving}
               />
               <p className="text-xs text-muted-foreground">
-                Cadastre no painel Efí (Pix → Webhooks) e use:{" "}
+                Cadastre no painel Efí (Pix → Webhooks):{" "}
                 <code className="bg-muted px-1 rounded">{suggestedWebhook}</code>
               </p>
             </div>
