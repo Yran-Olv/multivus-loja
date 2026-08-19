@@ -171,6 +171,8 @@ export default function CatalogoSyncConfigPage() {
           </CardTitle>
           <CardDescription>
             Use esta chave no Whaticket em Catálogo de produtos → Sincronizar com multivus-loja.
+            Com <code className="text-xs">WHATICKET_API_URL</code> no servidor, alterações no catálogo
+            da loja sincronizam automaticamente com o Whaticket.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -5,6 +5,7 @@ import { deleteSoftwareSafe } from "@/lib/catalog-delete"
 import { parseActivationLinkLines } from "@/lib/software-delivery"
 import { generateActivationShortCode } from "@/lib/activation-short-url"
 import { revalidatePath } from "next/cache"
+import { scheduleWhaticketCatalogSync } from "@/lib/trigger-whaticket-catalog-sync"
 
 export type SoftwareDeliveryFields = {
   activation_url?: string | null
@@ -160,6 +161,7 @@ export async function deleteSoftwareActivationLink(softwareId: number, linkId: n
   revalidatePath(`/admin/softwares/${softwareId}`)
   revalidatePath("/softwares")
   revalidatePath(`/softwares/${softwareId}`)
+  scheduleWhaticketCatalogSync("software_activation_link_deleted")
 
   return { success: true }
 }
@@ -244,11 +246,10 @@ export async function createSoftware(data: SoftwarePayload) {
 
   revalidatePath("/admin/softwares")
   revalidatePath("/softwares")
+  scheduleWhaticketCatalogSync("software_created")
 
   return linkResult
 }
-
-export async function updateSoftware(id: number, data: SoftwarePayload) {
   if (!sql) {
     throw new Error("Database not available")
   }
@@ -290,11 +291,10 @@ export async function updateSoftware(id: number, data: SoftwarePayload) {
   revalidatePath(`/admin/softwares/${id}`)
   revalidatePath("/softwares")
   revalidatePath(`/softwares/${id}`)
+  scheduleWhaticketCatalogSync("software_updated")
 
   return linkResult
 }
-
-export async function toggleSoftwareStatus(id: number) {
   if (!sql) {
     throw new Error("Database not available")
   }
@@ -305,9 +305,11 @@ export async function toggleSoftwareStatus(id: number) {
     WHERE id = ${id}
   `
   revalidatePath("/admin/softwares")
+  scheduleWhaticketCatalogSync("software_status_toggled")
 }
 
 export async function deleteSoftware(id: number) {
   await deleteSoftwareSafe(id)
   revalidatePath("/admin/softwares")
+  scheduleWhaticketCatalogSync("software_deleted")
 }

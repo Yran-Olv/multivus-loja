@@ -3,6 +3,7 @@
 import { sql } from "@/lib/db"
 import { deleteServiceSafe } from "@/lib/catalog-delete"
 import { revalidatePath } from "next/cache"
+import { scheduleWhaticketCatalogSync } from "@/lib/trigger-whaticket-catalog-sync"
 
 export type ServiceFormData = {
   name: string
@@ -43,6 +44,7 @@ export async function createService(data: ServiceFormData): Promise<{ ok: true }
     `
     revalidatePath("/admin/servicos")
     revalidatePath("/servicos")
+    scheduleWhaticketCatalogSync("service_created")
     return { ok: true }
   } catch (error) {
     console.error("[createService]", error)
@@ -83,6 +85,7 @@ export async function updateService(
     `
     revalidatePath("/admin/servicos")
     revalidatePath("/servicos")
+    scheduleWhaticketCatalogSync("service_updated")
     return { ok: true }
   } catch (error) {
     console.error("[updateService]", error)
@@ -110,10 +113,12 @@ export async function toggleServiceStatus(id: number) {
   `
   revalidatePath("/admin/servicos")
   revalidatePath("/servicos")
+  scheduleWhaticketCatalogSync("service_status_toggled")
 }
 
 export async function deleteService(id: number) {
   await deleteServiceSafe(id)
   revalidatePath("/admin/servicos")
   revalidatePath("/servicos")
+  scheduleWhaticketCatalogSync("service_deleted")
 }

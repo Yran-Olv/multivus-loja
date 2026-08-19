@@ -4,6 +4,7 @@ import { sql } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { productSchema, sanitizeString } from "@/lib/validation"
 import { deleteProductCascade } from "@/lib/catalog-delete"
+import { scheduleWhaticketCatalogSync } from "@/lib/trigger-whaticket-catalog-sync"
 
 export async function createProduct(data: {
   name: string
@@ -45,9 +46,8 @@ export async function createProduct(data: {
   `
   revalidatePath("/admin/produtos")
   revalidatePath("/produtos")
+  scheduleWhaticketCatalogSync("product_created")
 }
-
-export async function updateProduct(
   id: number,
   data: {
     name: string
@@ -102,6 +102,7 @@ export async function updateProduct(
   revalidatePath("/admin/produtos")
   revalidatePath("/produtos")
   revalidatePath(`/produtos/${id}`)
+  scheduleWhaticketCatalogSync("product_updated")
 }
 
 export async function toggleProductStatus(id: number) {
@@ -115,10 +116,12 @@ export async function toggleProductStatus(id: number) {
     WHERE id = ${id}
   `
   revalidatePath("/admin/produtos")
+  scheduleWhaticketCatalogSync("product_status_toggled")
 }
 
 export async function deleteProduct(id: number) {
   await deleteProductCascade(id)
   revalidatePath("/admin/produtos")
   revalidatePath("/produtos")
+  scheduleWhaticketCatalogSync("product_deleted")
 }
