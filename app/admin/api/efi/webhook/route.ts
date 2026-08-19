@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
+import { forwardPixWebhookToWhaticket } from "@/lib/forward-pix-to-whaticket"
 import { sendPaymentConfirmedNotification } from "@/lib/whatsapp-helpers"
 import { getClientIP, logSecurityEvent } from "@/lib/security"
 
@@ -42,7 +43,12 @@ export async function POST(request: NextRequest) {
       `
 
       if (orders.length === 0) {
-        console.warn("[Efí Webhook] Pedido não encontrado para txid:", txid)
+        console.warn(
+          "[Efí Webhook] Pedido não encontrado para txid:",
+          txid,
+          "— repassando ao Whaticket"
+        )
+        await forwardPixWebhookToWhaticket(bodyText, txid)
         continue
       }
 
