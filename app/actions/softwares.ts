@@ -250,6 +250,8 @@ export async function createSoftware(data: SoftwarePayload) {
 
   return linkResult
 }
+
+export async function updateSoftware(id: number, data: SoftwarePayload) {
   if (!sql) {
     throw new Error("Database not available")
   }
@@ -295,6 +297,8 @@ export async function createSoftware(data: SoftwarePayload) {
 
   return linkResult
 }
+
+export async function toggleSoftwareStatus(id: number) {
   if (!sql) {
     throw new Error("Database not available")
   }

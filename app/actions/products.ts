@@ -48,6 +48,8 @@ export async function createProduct(data: {
   revalidatePath("/produtos")
   scheduleWhaticketCatalogSync("product_created")
 }
+
+export async function updateProduct(
   id: number,
   data: {
     name: string
