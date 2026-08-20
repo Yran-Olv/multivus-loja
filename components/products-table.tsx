@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, Eye, EyeOff } from "lucide-react"
+import { Edit, Trash2, Eye, EyeOff, PackageMinus } from "lucide-react"
 import Link from "next/link"
-import { toggleProductStatus, deleteProduct } from "@/app/actions/products"
+import { toggleProductStatus, deleteProduct, writeOffProduct } from "@/app/actions/products"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
 
@@ -15,6 +15,7 @@ interface Product {
   price: string
   stock_quantity: number
   is_active: boolean
+  has_orders: boolean
   created_at: string
 }
 
@@ -22,7 +23,12 @@ export function ProductsTable({ products }: { products: Product[] }) {
   const { toast } = useToast()
   const [items, setItems] = useState(products)
   const [deleting, setDeleting] = useState(false)
+  const [writingOff, setWritingOff] = useState(false)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; productId: number | null }>({
+    open: false,
+    productId: null,
+  })
+  const [writeOffDialog, setWriteOffDialog] = useState<{ open: boolean; productId: number | null }>({
     open: false,
     productId: null,
   })
@@ -37,6 +43,38 @@ export function ProductsTable({ products }: { products: Product[] }) {
         description: error?.message || "Tente novamente.",
         variant: "destructive",
       })
+    }
+  }
+
+  const handleWriteOff = async () => {
+    if (!writeOffDialog.productId || writingOff) return
+
+    setWritingOff(true)
+    try {
+      const result = await writeOffProduct(writeOffDialog.productId)
+      if (!result.ok) {
+        toast({
+          title: "Não foi possível dar baixa",
+          description: result.error,
+          variant: "destructive",
+        })
+        return
+      }
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === writeOffDialog.productId
+            ? { ...item, stock_quantity: 0, is_active: false }
+            : item
+        )
+      )
+      setWriteOffDialog({ open: false, productId: null })
+      toast({
+        title: "Baixa registrada",
+        description: "Estoque zerado e produto desativado (venda externa).",
+      })
+    } finally {
+      setWritingOff(false)
     }
   }
 
@@ -69,6 +107,18 @@ export function ProductsTable({ products }: { products: Product[] }) {
   }
 
   const productToDelete = items.find((p) => p.id === deleteDialog.productId)
+  const productToWriteOff = items.find((p) => p.id === writeOffDialog.productId)
+
+  const deleteDescription = (() => {
+    if (!productToDelete) return ""
+    if (productToDelete.is_active && productToDelete.has_orders) {
+      return `“${productToDelete.name}” já teve pedidos no site. Desative ou use “Baixa (venda externa)” antes de excluir.`
+    }
+    if (!productToDelete.is_active && productToDelete.has_orders) {
+      return `Excluir “${productToDelete.name}” do catálogo? Os pedidos antigos continuam no histórico com o nome do produto.`
+    }
+    return `Excluir “${productToDelete.name}” permanentemente? Esta ação não pode ser desfeita.`
+  })()
 
   return (
     <div className="overflow-x-auto">
@@ -99,6 +149,16 @@ export function ProductsTable({ products }: { products: Product[] }) {
               </td>
               <td className="py-3 px-4">
                 <div className="flex gap-2 justify-end">
+                  {(product.is_active || product.stock_quantity > 0) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setWriteOffDialog({ open: true, productId: product.id })}
+                      title="Baixa — vendido fora do site (zera estoque e desativa)"
+                    >
+                      <PackageMinus className="h-4 w-4 text-amber-600" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -116,6 +176,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
                     variant="ghost"
                     size="sm"
                     onClick={() => setDeleteDialog({ open: true, productId: product.id })}
+                    title="Excluir do catálogo"
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
@@ -128,11 +189,20 @@ export function ProductsTable({ products }: { products: Product[] }) {
       {items.length === 0 && <p className="text-center text-muted-foreground py-8">Nenhum produto cadastrado</p>}
 
       <DeleteConfirmDialog
+        open={writeOffDialog.open}
+        onOpenChange={(open) => setWriteOffDialog({ open, productId: null })}
+        onConfirm={handleWriteOff}
+        title="Baixa — venda externa"
+        description={`Registrar que “${productToWriteOff?.name}” foi vendido fora do site? O estoque será zerado e o produto ficará inativo no catálogo.`}
+        confirmLabel="Confirmar baixa"
+      />
+
+      <DeleteConfirmDialog
         open={deleteDialog.open}
         onOpenChange={(open) => setDeleteDialog({ open, productId: null })}
         onConfirm={handleDelete}
-        title="Excluir Produto"
-        description={`Tem certeza que deseja excluir "${productToDelete?.name}"? Produtos vinculados a pedidos não podem ser excluídos — use o botão de desativar (ícone olho).`}
+        title="Excluir produto"
+        description={deleteDescription}
       />
     </div>
   )

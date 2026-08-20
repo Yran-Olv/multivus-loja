@@ -121,6 +121,39 @@ export async function toggleProductStatus(id: number) {
   scheduleWhaticketCatalogSync("product_status_toggled")
 }
 
+/** Zera estoque, desativa o produto (ex.: vendido fora do site). */
+export async function writeOffProduct(
+  id: number
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!sql) {
+    return { ok: false, error: "Banco de dados indisponível." }
+  }
+
+  try {
+    const rows = (await sql!`
+      UPDATE products
+      SET stock_quantity = 0,
+          is_active = false,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+      RETURNING id
+    `) as Array<{ id: number }>
+
+    if (!rows.length) {
+      return { ok: false, error: "Produto não encontrado." }
+    }
+
+    revalidatePath("/admin/produtos")
+    revalidatePath("/produtos")
+    scheduleWhaticketCatalogSync("product_write_off")
+    return { ok: true }
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Não foi possível dar baixa no produto."
+    return { ok: false, error: message }
+  }
+}
+
 export async function deleteProduct(
   id: number
 ): Promise<{ ok: true } | { ok: false; error: string }> {

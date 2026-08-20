@@ -25,15 +25,21 @@ export default async function AdminProdutosPage() {
     price: string
     stock_quantity: number
     is_active: boolean
+    has_orders: boolean
     created_at: string
   }[] = []
   let loadError: string | null = null
 
   try {
     const products = (await sql!`
-      SELECT * FROM products 
-      ORDER BY created_at DESC
-    `) as unknown as Product[]
+      SELECT
+        p.*,
+        EXISTS (
+          SELECT 1 FROM order_items oi WHERE oi.product_id = p.id
+        ) AS has_orders
+      FROM products p
+      ORDER BY p.created_at DESC
+    `) as unknown as (Product & { has_orders: boolean })[]
 
     productsForTable = products.map((product) => ({
       id: product.id,
@@ -42,6 +48,7 @@ export default async function AdminProdutosPage() {
       price: product.price != null ? String(product.price) : "0",
       stock_quantity: product.stock_quantity ?? 0,
       is_active: Boolean(product.is_active),
+      has_orders: Boolean(product.has_orders),
       created_at: toIsoDate(product.created_at),
     }))
   } catch (error) {
