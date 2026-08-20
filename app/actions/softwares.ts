@@ -275,7 +275,7 @@ export async function createSoftware(data: SoftwarePayload): Promise<LinkInsertR
 
     return linkResult
   } catch (error) {
-    rethrowSoftwareDbError(error)
+    return rethrowSoftwareDbError(error)
   }
 }
 
@@ -329,7 +329,7 @@ export async function updateSoftware(
 
     return linkResult
   } catch (error) {
-    rethrowSoftwareDbError(error)
+    return rethrowSoftwareDbError(error)
   }
 }
 
