@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
 
     const configs = await sql!`
-      SELECT id, client_id, environment, pix_key, certificate_path, webhook_url, is_active, created_at, updated_at
+      SELECT id, client_id, client_secret, environment, pix_key, certificate_path, webhook_url, is_active, created_at, updated_at
       FROM efi_config
       WHERE is_active = true
       ORDER BY id DESC

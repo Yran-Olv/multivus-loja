@@ -103,7 +103,7 @@ export default function EfiConfigPage() {
         if (data.config) {
           form.reset({
             client_id: data.config.client_id || "",
-            client_secret: "",
+            client_secret: data.config.client_secret || "",
             environment: data.config.environment || "sandbox",
             pix_key: data.config.pix_key || "",
             certificate_path: data.config.certificate_path || "",

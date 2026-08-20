@@ -27,13 +27,14 @@ strip_host() {
 ensure_uploads_dir() {
   local dir="${1:-public/uploads}"
   mkdir -p "$dir" certs/efi
-  chmod 775 "$dir" 2>/dev/null || true
+  chmod 775 "$dir" certs/efi 2>/dev/null || true
   if [ "$(id -u)" -eq 0 ]; then
-    chown -R 1001:1001 "$dir" 2>/dev/null || true
+    chown -R 1001:1001 "$dir" certs/efi 2>/dev/null || true
   else
-    sudo chown -R 1001:1001 "$dir" 2>/dev/null || true
+    sudo chown -R 1001:1001 "$dir" certs/efi 2>/dev/null || true
   fi
   echo "📁 Uploads (host): $(pwd)/$dir"
+  echo "📁 Certificados Efí (host): $(pwd)/certs/efi"
 }
 
 fix_uploads_in_container() {
@@ -42,6 +43,15 @@ fix_uploads_in_container() {
   [ -n "$cid" ] || return 0
   if docker exec -u root "$cid" sh -c 'mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads && chmod 775 /app/public/uploads'; then
     echo "📁 Uploads (container): permissões OK"
+  fi
+}
+
+fix_certs_in_container() {
+  local cid
+  cid="$(compose_prod ps -q frontend 2>/dev/null | head -1)"
+  [ -n "$cid" ] || return 0
+  if docker exec -u root "$cid" sh -c 'mkdir -p /app/certs/efi && chown -R nextjs:nodejs /app/certs/efi && chmod 775 /app/certs/efi'; then
+    echo "📁 Certificados Efí (container): permissões OK"
   fi
 }
 
@@ -173,6 +183,7 @@ echo ""
 echo -e "${BLUE}📁 Permissões de upload (public/uploads)...${NC}"
 ensure_uploads_dir "public/uploads"
 fix_uploads_in_container compose_prod
+fix_certs_in_container
 mirror_uploads_for_legacy_nginx
 echo ""
 

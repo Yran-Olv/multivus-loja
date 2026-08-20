@@ -96,6 +96,22 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("[Efí Cert] POST:", error)
+    const message = error instanceof Error ? error.message : String(error)
+    if (message.includes("EROFS") || message.includes("read-only")) {
+      return NextResponse.json(
+        {
+          error:
+            "Pasta certs/efi está somente leitura no container. Execute bash scripts/update.sh na VPS.",
+        },
+        { status: 500 }
+      )
+    }
+    if (message.includes("EACCES") || message.includes("permission denied")) {
+      return NextResponse.json(
+        { error: "Sem permissão para gravar em certs/efi. Execute bash scripts/update.sh na VPS." },
+        { status: 500 }
+      )
+    }
     return NextResponse.json({ error: "Erro ao enviar certificado" }, { status: 500 })
   }
 }

@@ -25,7 +25,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./public/uploads:/app/public/uploads
-      - ./certs/efi:/app/certs/efi:ro
+      - ./certs/efi:/app/certs/efi
     healthcheck:
       test:
         [
@@ -57,7 +57,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./public/uploads:/app/public/uploads
-      - ./certs/efi:/app/certs/efi:ro
+      - ./certs/efi:/app/certs/efi
     healthcheck:
       test:
         [
