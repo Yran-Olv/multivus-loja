@@ -45,6 +45,7 @@ logs/
 ecosystem.config.js.bak
 
 # IDE
+.cursor/
 .vscode/
 .idea/
 *.swp
