@@ -45,7 +45,15 @@ export function ProductsTable({ products }: { products: Product[] }) {
 
     setDeleting(true)
     try {
-      await deleteProduct(deleteDialog.productId)
+      const result = await deleteProduct(deleteDialog.productId)
+      if (!result.ok) {
+        toast({
+          title: "Não foi possível excluir",
+          description: result.error,
+          variant: "destructive",
+        })
+        return
+      }
       setItems((prev) => prev.filter((item) => item.id !== deleteDialog.productId))
       setDeleteDialog({ open: false, productId: null })
       toast({ title: "Produto excluído" })
@@ -124,7 +132,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
         onOpenChange={(open) => setDeleteDialog({ open, productId: null })}
         onConfirm={handleDelete}
         title="Excluir Produto"
-        description={`Tem certeza que deseja excluir "${productToDelete?.name}"? Esta ação não pode ser desfeita.`}
+        description={`Tem certeza que deseja excluir "${productToDelete?.name}"? Produtos vinculados a pedidos não podem ser excluídos — use o botão de desativar (ícone olho).`}
       />
     </div>
   )

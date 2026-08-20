@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Sparkles } from "lucide-react"
 import { getServiceIcon } from "@/lib/informatica-icons"
+import { formatServicePriceLabel } from "@/lib/format-service-price"
 
 interface ServicePromoCardProps {
   service: {
@@ -19,6 +20,7 @@ interface ServicePromoCardProps {
 
 export function ServicePromoCard({ service }: ServicePromoCardProps) {
   const Icon = getServiceIcon(service.icon)
+  const price = formatServicePriceLabel(service.price_from)
 
   return (
     <Card className="h-full flex flex-col overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 group">
@@ -45,14 +47,10 @@ export function ServicePromoCard({ service }: ServicePromoCardProps) {
       </CardHeader>
       <CardContent className="p-4 pt-0 flex-1 flex flex-col">
         <div className="flex-1">
-          {service.price_from && (
-            <div className="mb-6 p-2 bg-muted/50 rounded-md border border-border/50">
-              <p className="text-[10px] text-muted-foreground mb-0.5">A partir de</p>
-              <p className="text-lg font-bold text-primary">
-                R$ {Number(service.price_from).toFixed(2).replace(".", ",")}
-              </p>
-            </div>
-          )}
+          <div className="mb-6 p-2 bg-muted/50 rounded-md border border-border/50">
+            <p className="text-[10px] text-muted-foreground mb-0.5">{price.headline}</p>
+            <p className="text-lg font-bold text-primary">{price.detail}</p>
+          </div>
         </div>
         <Link href="/solicitar-servico" className="mt-auto">
           <Button size="sm" className="w-full text-xs h-8 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">

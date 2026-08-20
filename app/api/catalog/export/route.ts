@@ -44,6 +44,8 @@ export async function GET(request: NextRequest) {
     shortDescription?: string | null
     version?: string | null
     price: number
+    priceFrom?: number | null
+    pricingMode?: "fixed" | "quote"
     imageUrl: string | null
     active: boolean
     sortOrder: number
@@ -88,12 +90,19 @@ export async function GET(request: NextRequest) {
     `) as any[]
 
     services.forEach((s, index) => {
+      const priceFrom =
+        s.price_from !== null && s.price_from !== undefined
+          ? Number(s.price_from)
+          : null
+
       items.push({
         sourceType: "service",
         sourceId: s.id,
         name: s.name,
         description: s.description || null,
-        price: Number(s.price_from) || 0,
+        price: priceFrom && priceFrom > 0 ? priceFrom : 0,
+        priceFrom,
+        pricingMode: "quote",
         imageUrl: null,
         active: Boolean(s.is_active),
         sortOrder: 1000 + index

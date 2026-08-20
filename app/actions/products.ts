@@ -121,9 +121,18 @@ export async function toggleProductStatus(id: number) {
   scheduleWhaticketCatalogSync("product_status_toggled")
 }
 
-export async function deleteProduct(id: number) {
-  await deleteProductCascade(id)
-  revalidatePath("/admin/produtos")
-  revalidatePath("/produtos")
-  scheduleWhaticketCatalogSync("product_deleted")
+export async function deleteProduct(
+  id: number
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await deleteProductCascade(id)
+    revalidatePath("/admin/produtos")
+    revalidatePath("/produtos")
+    scheduleWhaticketCatalogSync("product_deleted")
+    return { ok: true }
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Não foi possível excluir o produto."
+    return { ok: false, error: message }
+  }
 }

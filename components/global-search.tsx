@@ -182,11 +182,17 @@ export function GlobalSearch() {
                             {result.description}
                           </div>
                         )}
-                        {result.price && (
+                        {result.type === "service" ? (
                           <div className="text-xs font-semibold text-primary">
-                            A partir de R$ {Number(result.price).toFixed(2).replace(".", ",")}
+                            {Number(result.price) > 0
+                              ? `A partir de R$ ${Number(result.price).toFixed(2).replace(".", ",")} — sob orçamento`
+                              : "Sobre orçamento"}
                           </div>
-                        )}
+                        ) : result.price ? (
+                          <div className="text-xs font-semibold text-primary">
+                            R$ {Number(result.price).toFixed(2).replace(".", ",")}
+                          </div>
+                        ) : null}
                       </div>
                     </CommandItem>
                   ))}

@@ -9,6 +9,7 @@ import { getServiceIcon } from "@/lib/informatica-icons"
 import { ServiceRequestFormWrapper } from "@/components/service-request-form-wrapper"
 import { ServiceRequestButton } from "@/components/service-request-button"
 import { ServiceFilters } from "@/components/service-filters"
+import { formatServicePriceLabel } from "@/lib/format-service-price"
 
 export const dynamic = "force-dynamic"
 
@@ -112,6 +113,7 @@ export default async function ServicosPage({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {services.map((service) => {
               const Icon = getServiceIcon(service.icon)
+              const price = formatServicePriceLabel(service.price_from)
               return (
                 <Card key={service.id} className="card-glow flex flex-col h-full">
                   <CardHeader>
@@ -131,14 +133,10 @@ export default async function ServicosPage({
                           ))}
                         </ul>
                       )}
-                      {service.price_from && (
-                        <div className="mb-6">
-                          <p className="text-sm text-muted-foreground">A partir de</p>
-                          <p className="text-3xl font-bold text-primary">
-                            R$ {Number(service.price_from).toFixed(2).replace(".", ",")}
-                          </p>
-                        </div>
-                      )}
+                      <div className="mb-6">
+                        <p className="text-sm text-muted-foreground">{price.headline}</p>
+                        <p className="text-2xl font-bold text-primary">{price.detail}</p>
+                      </div>
                     </div>
                     <div className="mt-auto">
                       <ServiceRequestButton serviceName={service.name} />

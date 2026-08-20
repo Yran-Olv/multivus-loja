@@ -38,7 +38,7 @@ export default async function AdminServicosPage() {
       id: service.id,
       name: service.name,
       icon: service.icon || "",
-      price_from: service.price_from != null ? String(service.price_from) : "0",
+      price_from: service.price_from != null ? String(service.price_from) : "",
       is_active: Boolean(service.is_active),
       created_at: toIsoDate(service.created_at),
     }))

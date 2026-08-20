@@ -36,7 +36,7 @@ export default async function EditServicoPage({ params }: { params: Promise<{ id
             description: service.description,
             icon: service.icon || "",
             features: Array.isArray(service.features) ? service.features : [],
-            price_from: service.price_from?.toString() || "0"
+            price_from: service.price_from?.toString() || ""
           }} />
         </CardContent>
       </Card>

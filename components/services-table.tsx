@@ -73,7 +73,12 @@ export function ServicesTable({ services }: { services: Service[] }) {
                 </div>
               </td>
               <td className="py-3 px-4">
-                {service.price_from ? `R$ ${Number(service.price_from).toFixed(2)}` : "Sob consulta"}
+                {(() => {
+                  const raw = service.price_from
+                  const value = raw ? Number(raw) : 0
+                  if (!value || value <= 0) return "Sobre orçamento"
+                  return `A partir de R$ ${value.toFixed(2)}`
+                })()}
               </td>
               <td className="py-3 px-4">
                 <span

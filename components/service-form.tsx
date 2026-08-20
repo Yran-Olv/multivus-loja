@@ -92,15 +92,18 @@ export function ServiceForm({ service }: ServiceFormProps) {
         <ServiceIconField defaultValue={service?.icon} required />
 
         <div className="space-y-2">
-          <Label htmlFor="price_from">Preço a partir de (R$)</Label>
+          <Label htmlFor="price_from">Preço a partir de (R$) — referência para orçamento</Label>
           <Input
             id="price_from"
             name="price_from"
             type="number"
             step="0.01"
             defaultValue={service?.price_from}
-            placeholder="Deixe vazio para 'Sob consulta'"
+            placeholder="Ex: 50 — ou vazio para “Sobre orçamento”"
           />
+          <p className="text-xs text-muted-foreground">
+            Serviços são sempre cobrados sob orçamento. Este valor aparece como “a partir de R$ X” no site e no WhatsApp.
+          </p>
         </div>
       </div>
 
