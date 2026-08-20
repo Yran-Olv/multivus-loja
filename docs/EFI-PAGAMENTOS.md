@@ -19,7 +19,7 @@ mkdir -p /var/www/multivus-loja/certs/efi
 chmod 600 /var/www/multivus-loja/certs/efi/*.p12
 ```
 
-O Docker monta `./certs/efi` em `/app/certs/efi` (read-only).
+O Docker monta `./certs/efi` em `/app/certs/efi` (gravável — upload pelo admin).
 
 ## 3. Migration
 

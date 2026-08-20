@@ -40,12 +40,24 @@ Scripts e procedimentos de backup e restauração.
 ### 🐛 [Troubleshooting](TROUBLESHOOTING.md)
 Soluções para problemas comuns do sistema.
 
+### 💳 [Pagamentos Efí (Pix)](EFI-PAGAMENTOS.md)
+Configuração Pix, certificado `.p12`, webhook e integração com Whaticket.
+
+### 🐳 [Docker](DOCKER.md)
+Containers, volumes, permissões de upload e certificados.
+
+### ☁️ [Cloudflare / SSL](CLOUDFLARE-SSL.md)
+Erro 525, Certbot e ajustes entre Cloudflare e VPS.
+
 ---
 
 ## 🔧 Integrações
 
 ### 📱 [Integração WhatsApp](WHATSAPP.md)
 Configuração e uso da integração WhatsApp.
+
+### 🔄 Sync catálogo → Whaticket
+Admin → **Configurações → Catálogo** + `WHATICKET_API_URL` no `.env`. Detalhes no [README](../README.md) na raiz do repositório.
 
 ---
 
@@ -94,4 +106,4 @@ docs/
 
 ---
 
-**Última atualização**: Janeiro 2025
+**Última atualização**: agosto 2026

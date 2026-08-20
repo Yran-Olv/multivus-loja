@@ -1,44 +1,10 @@
-# MULTIVUS — Loja de informática
+# multivus-loja
 
-Plataforma web para **e-commerce**, **assistência técnica**, **blog**, **portfólio de softwares** e **painel administrativo**, construída com **Next.js 16**, **React 19**, **TypeScript** e **PostgreSQL**.
+Loja e site da **Multivus Informática**: e-commerce, assistência técnica, blog, portfólio de softwares com links de ativação e painel administrativo. Integra com o **Multivus-Whaticket** para catálogo, Pix automático no WhatsApp e notificações.
 
-Repositório: [github.com/Yran-Olv/multivus-loja](https://github.com/Yran-Olv/multivus-loja)
-
----
-
-## Capturas de tela
-
-> Imagens em [`docs/img/`](docs/img/). Se não carregarem no navegador, use os links abaixo.
-
-### Loja (página inicial)
-
-<a href="docs/img/home.png" target="_blank">
-  <img
-    src="https://raw.githubusercontent.com/Yran-Olv/multivus-loja/main/docs/img/home.png"
-    alt="Página inicial da loja MULTIVUS"
-    width="920"
-  />
-</a>
-
-### Painel administrativo
-
-<a href="docs/img/paineladm.png" target="_blank">
-  <img
-    src="https://raw.githubusercontent.com/Yran-Olv/multivus-loja/main/docs/img/paineladm.png"
-    alt="Painel administrativo MULTIVUS"
-    width="920"
-  />
-</a>
-
-### Área do cliente
-
-<a href="docs/img/areacliente.png" target="_blank">
-  <img
-    src="https://raw.githubusercontent.com/Yran-Olv/multivus-loja/main/docs/img/areacliente.png"
-    alt="Área do cliente - login, cadastro e pedidos"
-    width="920"
-  />
-</a>
+- **Site:** [multivus.shop](https://multivus.shop)  
+- **Repositório:** [github.com/Yran-Olv/multivus-loja](https://github.com/Yran-Olv/multivus-loja)  
+- **Whaticket:** [Multivus-Whaticket](https://github.com/Yran-Olv/Multivus-Whaticket)
 
 ---
 
@@ -46,21 +12,46 @@ Repositório: [github.com/Yran-Olv/multivus-loja](https://github.com/Yran-Olv/mu
 
 | Área | Recursos |
 |------|----------|
-| **Loja** | Catálogo, carrinho, checkout, pedidos, avaliações, **área do cliente** (cadastro com endereço, edição de perfil) |
-| **Serviços** | Páginas públicas, solicitação de assistência, ícones por ramo |
-| **Conteúdo** | Blog, softwares, formulário de contato |
-| **Admin** | Dashboard, produtos, pedidos, mensagens, blog, configurações |
-| **Pagamentos** | **Pix via Efí (Gerencianet)** no checkout |
-| **Integrações** | WhatsApp (notificações), webhook Efí |
+| **Loja** | Catálogo, carrinho, checkout Pix, pedidos, área do cliente |
+| **Serviços** | Páginas públicas, solicitação de assistência, preço “sob orçamento” |
+| **Softwares** | Vitrine, links de ativação em lote, URLs curtas `/r/{code}` |
+| **Conteúdo** | Blog, contato, sobre |
+| **Admin** | Dashboard, produtos, serviços, softwares, pedidos, blog, configurações |
+| **Pagamentos** | **Pix via Efí (Gerencianet)** — checkout e webhook |
+| **Integrações** | Sync catálogo → Whaticket, credenciais Efí para Pix no fluxo WhatsApp, WhatsApp (notificações) |
 
 ---
 
 ## Stack
 
-- **Frontend:** Next.js (App Router), React, Tailwind CSS, shadcn/ui  
-- **Backend:** API Routes, Server Actions, JWT (`jose`), validação (`zod`)  
-- **Banco:** PostgreSQL + Sequelize (migrations/seeds)  
-- **Produção (VPS):** Docker (app), PostgreSQL + Nginx + Certbot no **host**
+| Camada | Tecnologia |
+|--------|------------|
+| App | Next.js 16 (App Router), React 19, TypeScript |
+| UI | Tailwind CSS, shadcn/ui |
+| Banco | PostgreSQL + Sequelize (migrations/seeds) |
+| Auth admin | JWT (`jose`) |
+| Produção | Docker (app) + PostgreSQL, Nginx e Certbot no **host** |
+
+---
+
+## Estrutura do repositório
+
+```
+multivus-loja/
+├── app/                    # Rotas Next.js (loja, admin, API)
+├── components/             # UI React
+├── lib/                    # DB, Efí, WhatsApp, catalog-sync, segurança
+├── database/               # Migrations e seeds Sequelize
+├── public/uploads/         # Imagens do admin (volume Docker)
+├── certs/efi/              # Certificados .p12 Efí (não versionados)
+├── nginx/                  # Templates Nginx
+├── scripts/
+│   ├── install.sh          # Instalação inicial na VPS
+│   └── update.sh           # Atualização (pull, build, migrate, containers)
+└── docs/                   # Documentação detalhada
+```
+
+Mais detalhes: [docs/ESTRUTURA.md](docs/ESTRUTURA.md)
 
 ---
 
@@ -78,9 +69,10 @@ Repositório: [github.com/Yran-Olv/multivus-loja](https://github.com/Yran-Olv/mu
 git clone https://github.com/Yran-Olv/multivus-loja.git
 cd multivus-loja
 npm install
+cp .env.example .env
 ```
 
-Crie `.env` na raiz (veja [.env.example](.env.example) e [docs/CONFIGURACAO.md](docs/CONFIGURACAO.md)):
+Edite `.env` (referência: [docs/CONFIGURACAO.md](docs/CONFIGURACAO.md)):
 
 ```env
 DB_HOST=localhost
@@ -90,113 +82,109 @@ DB_USER=postgres
 DB_PASSWORD=sua_senha
 JWT_SECRET=chave_secreta_com_pelo_menos_32_caracteres
 NODE_ENV=development
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 FRONTEND_DOMAIN=http://localhost:3000
 ```
 
 ```bash
-npm run db:create    # se necessário
 npm run db:migrate
 npm run db:seed
 npm run dev
 ```
 
-- Site: http://localhost:3000  
-- Admin: http://localhost:3000/admin/login — usuário `admin`, senha `admin123` (altere em produção)
+| URL | Descrição |
+|-----|-----------|
+| http://localhost:3000 | Loja |
+| http://localhost:3000/admin/login | Admin — usuário `admin`, senha `admin123` (altere em produção) |
 
 ---
 
 ## Produção (VPS)
 
-A aplicação roda em **containers Docker**; **PostgreSQL**, **Nginx** e **SSL** ficam no servidor.
+| Componente | Onde roda |
+|------------|-----------|
+| Next.js (portas **3255** / **3256**) | Docker (`multivus-frontend`, `multivus-backend`) |
+| PostgreSQL | Host (`127.0.0.1:5432`) |
+| Nginx + SSL | Host |
 
-| Componente | Onde |
-|------------|------|
-| Next.js (portas 3255 / 3256) | Docker |
-| PostgreSQL | Host |
-| Nginx + Certbot | Host |
+Caminho típico na VPS Multivus: `/home/deploy/multivus-loja-release`
 
-### Dois comandos
-
-**Primeira instalação** (interativo — domínio, banco, Nginx):
+### Instalação inicial
 
 ```bash
-cd /var/www/multivus-loja
+cd /home/deploy/multivus-loja-release
 bash scripts/install.sh
 ```
 
-**Atualização** (git pull, build, migrate, containers, permissões de upload):
+### Atualização (após `git pull`)
 
 ```bash
-cd /var/www/multivus-loja
+cd /home/deploy/multivus-loja-release
 bash scripts/update.sh
 ```
 
+O `update.sh` faz: build Docker, migrations, recreate containers, permissões de `public/uploads` e `certs/efi`, espelhamento de uploads para Nginx legado.
+
 Ver portas em uso: `bash scripts/install.sh --ports-only`
 
-Detalhes: [docs/DOCKER.md](docs/DOCKER.md)
+Documentação: [docs/DOCKER.md](docs/DOCKER.md) · [docs/DEPLOY.md](docs/DEPLOY.md)
 
-### SSL e domínio (Cloudflare)
+### SSL / Cloudflare
 
-Se o site retornar **525**, ajuste SSL entre Cloudflare e a VPS: [docs/CLOUDFLARE-SSL.md](docs/CLOUDFLARE-SSL.md)
+Erro **525** (SSL entre Cloudflare e VPS): [docs/CLOUDFLARE-SSL.md](docs/CLOUDFLARE-SSL.md)
 
-Exemplo após instalar Nginx:
+---
+
+## Pagamentos Efí (Pix)
+
+1. Conta [Efí](https://sejaefi.com.br) com API Pix + certificado `.p12`  
+2. Admin → **Configurações → Efí Pix** (`/admin/configuracoes/efi`)  
+3. Envie o certificado pelo painel ou coloque em `certs/efi/` na VPS  
+4. Cadastre o webhook no painel Efí: `https://multivus.shop/api/efi/webhook`  
+5. Guia completo: [docs/EFI-PAGAMENTOS.md](docs/EFI-PAGAMENTOS.md)
+
+O volume Docker `certs/efi` é **gravável** — upload pelo admin salva em `/app/certs/efi/` no container.
+
+---
+
+## Integração com Multivus-Whaticket
+
+### Sync de catálogo
+
+1. Admin → **Configurações → Catálogo** — gere a chave de sync  
+2. No `.env` (ou painel), configure:
+
+```env
+CATALOG_SYNC_API_KEY=sua_chave
+WHATICKET_API_URL=https://api.multivus.com.br
+NEXT_PUBLIC_SITE_URL=https://multivus.shop
+```
+
+3. No Whaticket → **Catálogo de produtos** → configure a mesma chave e URL da loja  
+
+Ao salvar produto, serviço ou software na loja, a API notifica o Whaticket (`POST /company-products/loja-sync/webhook`).
+
+Export manual (teste):
 
 ```bash
-sudo certbot --nginx -d multivus.shop -d api.multivus.shop
+curl -H "X-Catalog-Sync-Key: SUA_CHAVE" https://multivus.shop/api/catalog/export
 ```
 
-O `update.sh` **não remove** blocos HTTPS já configurados pelo Certbot.
+### Tipos exportados
 
-### Pagamentos Efí (Pix)
+| Tipo na loja | Uso no Whaticket |
+|--------------|------------------|
+| Produtos | Venda com Pix no fluxo catálogo |
+| Serviços | Orçamento (sem Pix automático) |
+| Softwares | Venda + pool de links de ativação |
 
-1. Conta e app na [Efí](https://sejaefi.com.br) (API Pix + certificado `.p12`)  
-2. Arquivo em `certs/efi/` na VPS (montado em `/app/certs/efi` no container)  
-3. Admin → **Configurações → Efí Pix** — use caminho `/app/certs/efi/seu-arquivo.p12`  
-4. Guia completo: [docs/EFI-PAGAMENTOS.md](docs/EFI-PAGAMENTOS.md)
-
-### Upload de imagens (admin)
-
-Arquivos em `public/uploads/` no host; o container grava como usuário `nextjs`. O `update.sh` ajusta permissões automaticamente.
+Credenciais Efí também são expostas ao Whaticket via `GET /api/catalog/efi-config` (mesma chave de sync).
 
 ---
 
-## Estrutura (resumo)
+## Upload de imagens
 
-```
-multivus-loja/
-├── app/              # Rotas Next.js (loja, admin, API)
-├── components/       # UI React
-├── lib/              # DB, Efí, WhatsApp, segurança
-├── database/         # Migrations e seeds Sequelize
-├── public/uploads/   # Imagens enviadas pelo admin
-├── certs/efi/        # Certificados .p12 (não versionados)
-├── nginx/            # Templates Nginx
-├── scripts/
-│   ├── install.sh    # Instalação inicial
-│   └── update.sh     # Atualização em produção
-└── docs/             # Documentação
-```
-
-Mais detalhes: [docs/ESTRUTURA.md](docs/ESTRUTURA.md)
-
----
-
-## Documentação
-
-| Documento | Conteúdo |
-|-----------|----------|
-| [docs/DOCKER.md](docs/DOCKER.md) | Docker, install/update, uploads |
-| [docs/CLOUDFLARE-SSL.md](docs/CLOUDFLARE-SSL.md) | Erro 525, Certbot, Cloudflare |
-| [docs/EFI-PAGAMENTOS.md](docs/EFI-PAGAMENTOS.md) | Pix Efí, certificado, webhook |
-| [docs/PAINEL-ADMIN.md](docs/PAINEL-ADMIN.md) | Painel administrativo |
-| [docs/CONFIGURACAO.md](docs/CONFIGURACAO.md) | Variáveis de ambiente |
-| [docs/BANCO-DADOS.md](docs/BANCO-DADOS.md) | Migrations e seeds |
-| [docs/API.md](docs/API.md) | Endpoints da API |
-| [docs/WHATSAPP.md](docs/WHATSAPP.md) | WhatsApp |
-| [docs/SEGURANCA.md](docs/SEGURANCA.md) | Segurança |
-| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Problemas comuns |
-
-Menu legado (opcional): `bash scripts/multivus.sh`
+Arquivos em `public/uploads/` no host. O `update.sh` ajusta permissões (`nextjs`, uid 1001). Em algumas VPS, uploads são espelhados em `/var/www/multivus-loja/public/uploads/` para Nginx legado.
 
 ---
 
@@ -207,20 +195,38 @@ Menu legado (opcional): `bash scripts/multivus.sh`
 | `npm run dev` | Desenvolvimento |
 | `npm run build` | Build de produção |
 | `npm run start` | Servidor após build |
-| `npm run db:migrate` | Migrations |
-| `npm run db:seed` | Seeds |
+| `npm run db:migrate` | Migrations Sequelize |
+| `npm run db:seed` | Seed admin + dados opcionais |
 
 ---
 
-## Commits
+## Documentação
 
-O repositório usa hook em `.githooks/` para não incluir trailers automáticos da IDE. Após clonar:
+| Documento | Conteúdo |
+|-----------|----------|
+| [docs/README.md](docs/README.md) | Índice completo |
+| [docs/DOCKER.md](docs/DOCKER.md) | Docker, install/update, uploads, certs |
+| [docs/EFI-PAGAMENTOS.md](docs/EFI-PAGAMENTOS.md) | Pix, certificado, webhook |
+| [docs/CONFIGURACAO.md](docs/CONFIGURACAO.md) | Variáveis de ambiente |
+| [docs/PAINEL-ADMIN.md](docs/PAINEL-ADMIN.md) | Painel administrativo |
+| [docs/API.md](docs/API.md) | Endpoints |
+| [docs/WHATSAPP.md](docs/WHATSAPP.md) | WhatsApp |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Problemas comuns |
+| [docs/SEGURANCA.md](docs/SEGURANCA.md) | Segurança |
+
+Menu interativo legado: `bash scripts/multivus.sh`
+
+---
+
+## Git hooks (opcional)
+
+Hooks em `.githooks/` evitam trailers indesejados em commits. Após clonar:
 
 ```bash
 git config core.hooksPath .githooks
 ```
 
-(O `install.sh` configura isso na instalação.)
+O `install.sh` pode configurar isso na VPS.
 
 ---
 
