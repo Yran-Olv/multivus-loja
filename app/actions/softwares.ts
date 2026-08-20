@@ -192,6 +192,30 @@ const parsePriceInput = (raw: unknown): number => {
   return Number.parseFloat(text)
 }
 
+const normalizeIconUrl = (raw: unknown): string | null => {
+  const value = String(raw ?? "").trim()
+  return value || null
+}
+
+const rethrowSoftwareDbError = (error: unknown): never => {
+  const message = error instanceof Error ? error.message : String(error)
+
+  if (message.includes("value too long") && message.includes("icon")) {
+    throw new Error(
+      "A URL da imagem é longa demais para o banco. Execute a migration 20260820110000 (icon → TEXT) com bash scripts/update.sh."
+    )
+  }
+
+  if (message.includes("column") && message.includes("does not exist")) {
+    throw new Error(
+      "Campos de software desatualizados no banco. Execute bash scripts/update.sh na VPS."
+    )
+  }
+
+  if (error instanceof Error) throw error
+  throw new Error(message || "Erro ao salvar software")
+}
+
 export async function createSoftware(data: SoftwarePayload) {
   if (!sql) {
     throw new Error("Database not available")
@@ -210,14 +234,15 @@ export async function createSoftware(data: SoftwarePayload) {
 
   const safeShortDescription = data.short_description ?? null
   const safeVersion = data.version ?? null
-  const safeImageUrl = data.image_url ?? null
+  const safeImageUrl = normalizeIconUrl(data.image_url)
   const price = parsePriceInput(data.price)
 
   if (!Number.isFinite(price) || price < 0) {
     throw new Error("Preço inválido. Use formato como 99,90")
   }
 
-  const inserted = (await sql!`
+  try {
+    const inserted = (await sql!`
     INSERT INTO softwares (
       name, description, short_description, version, price, category, icon,
       features, system_requirements, is_featured,
@@ -233,22 +258,25 @@ export async function createSoftware(data: SoftwarePayload) {
     RETURNING id
   `) as Array<{ id: number }>
 
-  const softwareId = inserted[0]?.id
-  if (!softwareId) {
-    throw new Error("Falha ao criar software")
+    const softwareId = inserted[0]?.id
+    if (!softwareId) {
+      throw new Error("Falha ao criar software")
+    }
+
+    const linkResult = await insertBulkLinks(
+      softwareId,
+      data.activation_links_bulk,
+      data.activation_url
+    )
+
+    revalidatePath("/admin/softwares")
+    revalidatePath("/softwares")
+    scheduleWhaticketCatalogSync("software_created")
+
+    return linkResult
+  } catch (error) {
+    rethrowSoftwareDbError(error)
   }
-
-  const linkResult = await insertBulkLinks(
-    softwareId,
-    data.activation_links_bulk,
-    data.activation_url
-  )
-
-  revalidatePath("/admin/softwares")
-  revalidatePath("/softwares")
-  scheduleWhaticketCatalogSync("software_created")
-
-  return linkResult
 }
 
 export async function updateSoftware(id: number, data: SoftwarePayload) {
@@ -259,14 +287,15 @@ export async function updateSoftware(id: number, data: SoftwarePayload) {
   const delivery = normalizeDelivery(data)
   const safeShortDescription = data.short_description ?? null
   const safeVersion = data.version ?? null
-  const safeImageUrl = data.image_url ?? null
+  const safeImageUrl = normalizeIconUrl(data.image_url)
   const price = parsePriceInput(data.price)
 
   if (!Number.isFinite(price) || price < 0) {
     throw new Error("Preço inválido. Use formato como 99,90")
   }
 
-  await sql!`
+  try {
+    await sql!`
     UPDATE softwares 
     SET name = ${data.name}, 
         description = ${data.description}, 
@@ -287,15 +316,18 @@ export async function updateSoftware(id: number, data: SoftwarePayload) {
     WHERE id = ${id}
   `
 
-  const linkResult = await insertBulkLinks(id, data.activation_links_bulk, null)
+    const linkResult = await insertBulkLinks(id, data.activation_links_bulk, null)
 
-  revalidatePath("/admin/softwares")
-  revalidatePath(`/admin/softwares/${id}`)
-  revalidatePath("/softwares")
-  revalidatePath(`/softwares/${id}`)
-  scheduleWhaticketCatalogSync("software_updated")
+    revalidatePath("/admin/softwares")
+    revalidatePath(`/admin/softwares/${id}`)
+    revalidatePath("/softwares")
+    revalidatePath(`/softwares/${id}`)
+    scheduleWhaticketCatalogSync("software_updated")
 
-  return linkResult
+    return linkResult
+  } catch (error) {
+    rethrowSoftwareDbError(error)
+  }
 }
 
 export async function toggleSoftwareStatus(id: number) {

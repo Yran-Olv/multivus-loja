@@ -45,6 +45,14 @@ fix_uploads_in_container() {
   fi
 }
 
+# Nginx legado em /var/www/multivus-loja ainda serve /uploads em algumas VPS.
+mirror_uploads_for_legacy_nginx() {
+  local legacy="/var/www/multivus-loja/public/uploads"
+  if [ -d "$legacy" ] && [ -d "public/uploads" ]; then
+    rsync -a public/uploads/ "$legacy/" && echo "📁 Uploads espelhados em $legacy"
+  fi
+}
+
 certbot_nginx_domains() {
   local fe be
   fe="$(strip_host "${FRONTEND_DOMAIN:-}")"
@@ -165,6 +173,7 @@ echo ""
 echo -e "${BLUE}📁 Permissões de upload (public/uploads)...${NC}"
 ensure_uploads_dir "public/uploads"
 fix_uploads_in_container compose_prod
+mirror_uploads_for_legacy_nginx
 echo ""
 
 if [ -f nginx/generated/multivus-loja-frontend.conf ] || [ -f nginx/local/multivus-loja.frontend.conf ]; then
