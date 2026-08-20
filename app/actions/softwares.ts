@@ -46,7 +46,7 @@ const normalizeDelivery = (data: SoftwareDeliveryFields) => ({
   sold_out_message: String(data.sold_out_message || "").trim() || null,
 })
 
-type LinkInsertResult = { inserted: number; skipped: number; invalid: number }
+export type LinkInsertResult = { inserted: number; skipped: number; invalid: number }
 
 const insertBulkLinks = async (
   softwareId: number,
@@ -216,7 +216,7 @@ const rethrowSoftwareDbError = (error: unknown): never => {
   throw new Error(message || "Erro ao salvar software")
 }
 
-export async function createSoftware(data: SoftwarePayload) {
+export async function createSoftware(data: SoftwarePayload): Promise<LinkInsertResult> {
   if (!sql) {
     throw new Error("Database not available")
   }
@@ -279,7 +279,10 @@ export async function createSoftware(data: SoftwarePayload) {
   }
 }
 
-export async function updateSoftware(id: number, data: SoftwarePayload) {
+export async function updateSoftware(
+  id: number,
+  data: SoftwarePayload
+): Promise<LinkInsertResult> {
   if (!sql) {
     throw new Error("Database not available")
   }
