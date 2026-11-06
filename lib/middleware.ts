@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { jwtVerify } from "jose"
+import { getJwtSecret } from "@/lib/security"
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || "fallback-secret-key-min-32-chars")
+const secret = getJwtSecret()
 
 export async function verifyAuth(request: NextRequest): Promise<{ isValid: boolean; userId?: number }> {
   try {

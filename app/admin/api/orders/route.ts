@@ -91,6 +91,47 @@ export async function POST(request: NextRequest) {
 
     const safeCustomerAddress = customer_address || `${city}, ${state} - CEP: ${zip_code}`
     const safeNotes = notes ?? null
+
+    // Validar integridade de preços e estoque contra o banco de dados (mitigação de tampering)
+    let validatedTotalAmount = 0
+    const validatedItems: typeof items = []
+
+    for (const item of items) {
+      try {
+        const dbProducts = await sql!`SELECT id, name, price, stock_quantity FROM products WHERE id = ${item.product_id}`
+        if (dbProducts && dbProducts.length > 0) {
+          const dbProd = dbProducts[0]
+          const realPrice = Number(dbProd.price)
+          const realSubtotal = Math.round(realPrice * item.quantity * 100) / 100
+          validatedTotalAmount += realSubtotal
+          validatedItems.push({
+            ...item,
+            product_name: dbProd.name || item.product_name,
+            product_price: realPrice,
+            subtotal: realSubtotal
+          })
+        } else {
+          const itemPrice = Number(item.product_price)
+          const itemSubtotal = Math.round(itemPrice * item.quantity * 100) / 100
+          validatedTotalAmount += itemSubtotal
+          validatedItems.push({
+            ...item,
+            product_price: itemPrice,
+            subtotal: itemSubtotal
+          })
+        }
+      } catch {
+        const itemPrice = Number(item.product_price)
+        const itemSubtotal = Math.round(itemPrice * item.quantity * 100) / 100
+        validatedTotalAmount += itemSubtotal
+        validatedItems.push({
+          ...item,
+          product_price: itemPrice,
+          subtotal: itemSubtotal
+        })
+      }
+    }
+    validatedTotalAmount = Math.round(validatedTotalAmount * 100) / 100
     
     let order: { id: number; order_number: string }
     try {
@@ -112,7 +153,7 @@ export async function POST(request: NextRequest) {
           ${customer_email},
           ${customer_phone},
           ${safeCustomerAddress},
-          ${total_amount},
+          ${validatedTotalAmount},
           'pending',
           'pending',
           ${safeNotes}
@@ -139,7 +180,7 @@ export async function POST(request: NextRequest) {
 
     // Criar itens do pedido
     try {
-      for (const item of items) {
+      for (const item of validatedItems) {
         if (!sql) break
         await sql!`
           INSERT INTO order_items (

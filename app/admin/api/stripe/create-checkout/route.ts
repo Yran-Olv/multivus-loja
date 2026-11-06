@@ -24,16 +24,24 @@ export async function POST(request: NextRequest) {
 
     const order = orders[0]
 
+    // Buscar itens oficiais do pedido diretamente do banco de dados (prevenção contra price tampering)
+    const dbItems = await sql!`
+      SELECT product_name, product_price, quantity
+      FROM order_items
+      WHERE order_id = ${order_id}
+    `
+    const itemsToCharge = dbItems.length > 0 ? dbItems : items
+
     // Criar sessão de checkout do Stripe
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      line_items: items.map((item: any) => ({
+      line_items: itemsToCharge.map((item: any) => ({
         price_data: {
           currency: "brl",
           product_data: {
             name: item.product_name,
           },
-          unit_amount: Math.round(item.product_price * 100), // Converter para centavos
+          unit_amount: Math.round(Number(item.product_price) * 100), // Converter para centavos
         },
         quantity: item.quantity,
       })),

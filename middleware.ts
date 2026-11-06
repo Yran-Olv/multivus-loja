@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { jwtVerify } from "jose"
-import { addSecurityHeaders, getClientIP, validateOrigin, logSecurityEvent } from "@/lib/security"
+import { addSecurityHeaders, getClientIP, validateOrigin, logSecurityEvent, getJwtSecret } from "@/lib/security"
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || "fallback-secret-key-min-32-chars")
+const secret = getJwtSecret()
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname

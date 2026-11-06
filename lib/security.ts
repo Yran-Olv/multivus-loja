@@ -307,8 +307,17 @@ export function logSecurityEvent(
 }
 
 /**
- * Limpa dados antigos periodicamente (bloqueios expirados e tentativas antigas)
+ * Obtém a chave secreta JWT com validação estrita em produção
  */
+export function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET
+  if (!secret || secret === "fallback-secret-key-min-32-chars") {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("JWT_SECRET é obrigatório e deve ter no mínimo 32 caracteres em produção.")
+    }
+  }
+  return new TextEncoder().encode(secret || "fallback-secret-key-min-32-chars")
+}
 setInterval(() => {
   const now = Date.now()
   
