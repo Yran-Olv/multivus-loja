@@ -104,13 +104,15 @@ export function sanitizeAndFormatBlogContent(html: string): string {
     return ""
   }
 
-  // Primeiro sanitizar (remover scripts, iframes, etc)
+  // Primeiro sanitizar (remover scripts, iframes, objetos, applets e manipuladores de eventos)
   let safe = html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
     .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
-    .replace(/on\w+="[^"]*"/gi, "")
-    .replace(/on\w+='[^']*'/gi, "")
-    .replace(/javascript:/gi, "")
+    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, "")
+    .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, "")
+    .replace(/<applet\b[^<]*(?:(?!<\/applet>)<[^<]*)*<\/applet>/gi, "")
+    .replace(/\s*on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, "")
+    .replace(/(href|src)\s*=\s*(?:['"]\s*javascript:[^'"]*['"]|\s*javascript:[^\s>]+)/gi, '$1="#"')
     .replace(/data:text\/html/gi, "")
 
   // Depois formatar

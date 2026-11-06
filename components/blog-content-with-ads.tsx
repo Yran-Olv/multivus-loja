@@ -4,6 +4,7 @@ import { BlogContentFormatter } from "./blog-content-formatter"
 import { BlogAdBanner } from "./blog-ad-banner"
 import type { Service } from "@/lib/db"
 import { useMemo } from "react"
+import { sanitizeAndFormatBlogContent } from "@/lib/blog-content-formatter"
 
 interface BlogContentWithAdsProps {
   content: string
@@ -93,7 +94,7 @@ export function BlogContentWithAds({ content, services }: BlogContentWithAdsProp
         return (
           <div
             key={`content-${index}`}
-            dangerouslySetInnerHTML={{ __html: item.data as string }}
+            dangerouslySetInnerHTML={{ __html: sanitizeAndFormatBlogContent(item.data as string) }}
           />
         )
       })}

@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useMemo } from "react"
+import { sanitizeAndFormatBlogContent } from "@/lib/blog-content-formatter"
 
 interface BlogContentFormatterProps {
   content: string
@@ -9,6 +10,7 @@ interface BlogContentFormatterProps {
 
 export function BlogContentFormatter({ content, className = "" }: BlogContentFormatterProps) {
   const contentRef = useRef<HTMLDivElement>(null)
+  const sanitizedContent = useMemo(() => sanitizeAndFormatBlogContent(content), [content])
 
   useEffect(() => {
     if (!contentRef.current) return
@@ -213,7 +215,7 @@ export function BlogContentFormatter({ content, className = "" }: BlogContentFor
     <div
       ref={contentRef}
       className={className}
-      dangerouslySetInnerHTML={{ __html: content }}
+      dangerouslySetInnerHTML={{ __html: sanitizedContent }}
     />
   )
 }
