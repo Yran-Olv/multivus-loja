@@ -55,3 +55,7 @@ ecosystem.config.js.bak
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code local settings (may contain secrets)
+.claude/settings.local.json
+.claude/settings.json

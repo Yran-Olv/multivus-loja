@@ -20,3 +20,6 @@ coverage
 .vscode
 .idea
 public/uploads
+
+.claude
+**/.claude
